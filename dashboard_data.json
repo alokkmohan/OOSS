@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-07T08:19:08.830404+00:00",
+  "generated_at": "2026-08-07T08:27:00.505039+00:00",
   "summary": {
     "total": 40069,
     "studying": 3581,
@@ -645,20 +645,12 @@
       "count": 64
     },
     {
-      "label": "Other",
-      "count": 12600
-    },
-    {
       "label": "Call Not Received",
       "count": 220
     },
     {
-      "label": "Wrong / Invalid Number",
-      "count": 635
-    },
-    {
-      "label": "Switched Off / Not Reachable",
-      "count": 309
+      "label": "Wrong Number / Switched Off",
+      "count": 944
     },
     {
       "label": "No Information Available",
@@ -674,7 +666,7 @@
     },
     {
       "label": "Other",
-      "count": 13993
+      "count": 26593
     }
   ]
 }

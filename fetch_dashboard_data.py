@@ -112,22 +112,22 @@ NOT_STUDYING_REASON_PATTERNS = [
 
 UNCLEAR_REASON_PATTERNS = [
     ("Call Not Received", r"not\s*receiv|no\s*answer|not\s*answer|call\s*not|no\s*respond|not\s*respond"),
-    ("Wrong / Invalid Number", r"wrong\s*no|wrong\s*number|wrong\s*phone|invalid\s*number|incorrect\s*phone"),
-    ("Switched Off / Not Reachable", r"switch\s*off|switched\s*off|swich\s*off|swtich\s*off"),
+    ("Wrong Number / Switched Off",
+     r"wrong\s*no|wrong\s*number|wrong\s*phone|invalid\s*number|incorrect\s*phone|"
+     r"switch\s*off|switched\s*off|swich\s*off|swtich\s*off"),
     ("No Information Available", r"no\s*info|data\s*not|active\s*for\s*import|status\s*not\s*known|no\s*data"),
     ("Refused to Share Information", r"refused\s*to\s*share|not\s*share"),
 ]
 
-# Two distinct fallback buckets ("Not Studying, no specific reason matched"
-# vs "Unclear, no specific reason matched") both display as plain "Other" —
-# kept as separate internal keys so they render as two separate bars.
+# The Not-Studying-side and Unclear-side fallbacks ("no specific reason
+# matched anything above") are merged into a single "Other" bar.
 REASON_KEYS_ORDERED = (
     [name for name, _ in NOT_STUDYING_REASON_PATTERNS]
-    + ["Death (Student/Family Member)", "Other (Not Studying)"]
+    + ["Death (Student/Family Member)"]
     + [name for name, _ in UNCLEAR_REASON_PATTERNS]
-    + ["Yet to be Contacted", "Other (Unclear)"]
+    + ["Yet to be Contacted", "Other"]
 )
-REASON_DISPLAY_LABEL = {"Other (Not Studying)": "Other", "Other (Unclear)": "Other"}
+REASON_DISPLAY_LABEL = {}
 
 
 def detect_reason(bucket: str, current_status: str, remark: str) -> str:
@@ -138,14 +138,14 @@ def detect_reason(bucket: str, current_status: str, remark: str) -> str:
         for name, pattern in NOT_STUDYING_REASON_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 return name
-        return "Other (Not Studying)"
+        return "Other"
     if bucket == "Unclear":
         for name, pattern in UNCLEAR_REASON_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 return name
         if not current_status.strip() and not remark.strip():
             return "Yet to be Contacted"
-        return "Other (Unclear)"
+        return "Other"
     return None
 
 
