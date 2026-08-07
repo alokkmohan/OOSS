@@ -250,7 +250,7 @@ def build_chart_requests(sheet_id, layout):
                     "startColumnIndex": DATA_COL_OFFSET + 1, "endColumnIndex": DATA_COL_OFFSET + 5}]}},
             },
         },
-        "position": pos(hdr - 2),
+        "position": pos(hdr - 2, height_px=340),
     }}})
 
     # --- Willingness pie chart -----------------------------------------
@@ -270,7 +270,7 @@ def build_chart_requests(sheet_id, layout):
                     "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 3}]}},
             },
         },
-        "position": pos(whdr + 17),
+        "position": pos(whdr + 17, height_px=340),
     }}})
 
     # --- Reason-wise breakup horizontal bar chart -------------------------
