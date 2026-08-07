@@ -123,7 +123,7 @@ def write_tables(ws, data):
     w = data["willingness"]
     willing_header_row = len(data_rows) + 2
     row("WILLING / UNWILLING / UNCLEAR")
-    row("Willing (Economic/External/Unspecified)", "Unwilling", "Unclear")
+    row("Willing (Economic/Unspecified)", "Unwilling", "Unclear")
     row(w["willing"], w["unwilling"], s["unclear"])
     row()
 
@@ -231,17 +231,6 @@ def build_chart_requests(sheet_id, layout):
         p["overlayPosition"]["anchorCell"]["sheetId"] = sheet_id
         return p
 
-    def domain(row, start_col, end_col):
-        return {"domain": {"sourceRange": {"sources": [{
-            "sheetId": sheet_id, "startRowIndex": row - 1, "endRowIndex": row,
-            "startColumnIndex": DATA_COL_OFFSET + start_col, "endColumnIndex": DATA_COL_OFFSET + end_col}]}}}
-
-    def series(row, start_col, end_col):
-        return {"series": {"sourceRange": {"sources": [{
-            "sheetId": sheet_id, "startRowIndex": row - 1, "endRowIndex": row,
-            "startColumnIndex": DATA_COL_OFFSET + start_col, "endColumnIndex": DATA_COL_OFFSET + end_col}]}},
-            "targetAxis": "LEFT_AXIS"}
-
     # --- Status breakdown pie chart -----------------------------------
     hdr = layout["summary_header_row"] + 1
     val = hdr + 1
@@ -250,7 +239,7 @@ def build_chart_requests(sheet_id, layout):
             "title": "Status Breakdown",
             "hiddenDimensionStrategy": "SHOW_ALL",
             "pieChart": {
-                "legendPosition": "RIGHT_LEGEND",
+                "legendPosition": "BOTTOM_LEGEND",
                 # columns 1-4 = Studying/Not Studying/Unclear/Deceased; column 0
                 # (Total) is deliberately excluded, it's the sum of the rest.
                 "domain": {"sourceRange": {"sources": [{
@@ -272,7 +261,7 @@ def build_chart_requests(sheet_id, layout):
             "title": "Willing / Unwilling / Unclear",
             "hiddenDimensionStrategy": "SHOW_ALL",
             "pieChart": {
-                "legendPosition": "RIGHT_LEGEND",
+                "legendPosition": "BOTTOM_LEGEND",
                 "domain": {"sourceRange": {"sources": [{
                     "sheetId": sheet_id, "startRowIndex": whdr - 1, "endRowIndex": whdr,
                     "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 3}]}},
@@ -322,8 +311,15 @@ def build_chart_requests(sheet_id, layout):
                     "chartType": "COLUMN",
                     "stackedType": "STACKED",
                     "legendPosition": "BOTTOM_LEGEND",
-                    "domains": [domain(ghdr, 0, 1)],
-                    "series": [series(ghdr, c, c + 1) for c in (1, 2, 3, 4)],
+                    "domains": [{"domain": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": ghdr - 1,
+                        "endRowIndex": ghdr + grows,
+                        "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 1}]}}}],
+                    "series": [{"series": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": ghdr - 1,
+                        "endRowIndex": ghdr + grows,
+                        "startColumnIndex": DATA_COL_OFFSET + c, "endColumnIndex": DATA_COL_OFFSET + c + 1}]}},
+                        "targetAxis": "LEFT_AXIS"} for c in (1, 2, 3, 4)],
                     "headerCount": 1,
                 },
             },
