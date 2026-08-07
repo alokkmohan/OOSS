@@ -226,8 +226,8 @@ def build_chart_requests(sheet_id, layout):
     requests = []
     anchor_col = 9  # column J
 
-    def pos(row_0indexed, height_px=300):
-        p = chart_position(row_0indexed, anchor_col, height_px=height_px)
+    def pos(row_0indexed, height_px=300, width_px=480):
+        p = chart_position(row_0indexed, anchor_col, width_px=width_px, height_px=height_px)
         p["overlayPosition"]["anchorCell"]["sheetId"] = sheet_id
         return p
 
@@ -250,7 +250,7 @@ def build_chart_requests(sheet_id, layout):
                     "startColumnIndex": DATA_COL_OFFSET + 1, "endColumnIndex": DATA_COL_OFFSET + 5}]}},
             },
         },
-        "position": pos(hdr - 2, height_px=340),
+        "position": pos(hdr - 2, height_px=340, width_px=620),
     }}})
 
     # --- Willingness pie chart -----------------------------------------
@@ -270,7 +270,7 @@ def build_chart_requests(sheet_id, layout):
                     "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 3}]}},
             },
         },
-        "position": pos(whdr + 17, height_px=340),
+        "position": pos(whdr + 17, height_px=340, width_px=620),
     }}})
 
     # --- Reason-wise breakup horizontal bar chart -------------------------
