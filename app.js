@@ -111,14 +111,15 @@ function renderWillingnessChart() {
   if (willingnessChart) willingnessChart.destroy();
 
   const w = dashboardData.willingness;
+  const unclear = dashboardData.summary.unclear;
 
   willingnessChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Willing (Economic/External/Unspecified)', 'Unwilling'],
+      labels: ['Willing (Economic/External/Unspecified)', 'Unwilling', 'Unclear'],
       datasets: [{
-        data: [w.willing, w.unwilling],
-        backgroundColor: ['#38bdf8', '#a855f7'],
+        data: [w.willing, w.unwilling, unclear],
+        backgroundColor: ['#38bdf8', '#a855f7', '#64748b'],
         borderWidth: 0
       }]
     },
