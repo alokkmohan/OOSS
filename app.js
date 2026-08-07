@@ -7,7 +7,7 @@ const DISTRICT_TARGET = 75;
 let statusChart = null;
 let willingnessChart = null;
 let categoryChart = null;
-let districtChart = null;
+let reasonChart = null;
 let genderChart = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -31,7 +31,6 @@ function setupEventListeners() {
   });
   document.getElementById('district-sort').addEventListener('change', (e) => {
     districtSort = e.target.value;
-    renderDistrictChart();
     renderDistrictTable(document.getElementById('district-search').value);
   });
   document.getElementById('record-search').addEventListener('input', (e) => {
@@ -45,7 +44,7 @@ function renderAll() {
   renderStatusChart();
   renderWillingnessChart();
   renderCategoryChart();
-  renderDistrictChart();
+  renderReasonChart();
   renderGenderChart();
   renderDistrictTable();
   renderRecordTable();
@@ -178,37 +177,35 @@ function sortedDistricts() {
   return list;
 }
 
-function renderDistrictChart() {
-  const ctx = document.getElementById('chart-districts').getContext('2d');
-  if (districtChart) districtChart.destroy();
+function renderReasonChart() {
+  const ctx = document.getElementById('chart-reasons').getContext('2d');
+  if (reasonChart) reasonChart.destroy();
 
-  const list = sortedDistricts().slice(0, 20);
+  const list = dashboardData.reason_breakdown || [];
+  const labels = list.map(r => r.label);
+  const counts = list.map(r => r.count);
 
-  const labels = list.map(d => d.district_name);
-  const studying = list.map(d => d.studying || 0);
-  const notStudying = list.map(d => d.not_studying || 0);
-  const unclear = list.map(d => d.unclear || 0);
-
-  districtChart = new Chart(ctx, {
+  reasonChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: labels,
-      datasets: [
-        { label: 'Studying', data: studying, backgroundColor: '#22c55e' },
-        { label: 'Not Studying', data: notStudying, backgroundColor: '#f97316' },
-        { label: 'Unclear', data: unclear, backgroundColor: '#64748b' }
-      ]
+      datasets: [{
+        label: 'No. of Students',
+        data: counts,
+        backgroundColor: '#0ea5e9',
+        borderRadius: 4
+      }]
     },
     options: {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      scales: {
-        x: { stacked: true, ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.08)' } },
-        y: { stacked: true, ticks: { color: '#475569' }, grid: { display: false } }
-      },
       plugins: {
-        legend: { labels: { color: '#475569' } }
+        legend: { display: false }
+      },
+      scales: {
+        x: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.08)' } },
+        y: { ticks: { color: '#475569' }, grid: { display: false } }
       }
     }
   });
@@ -258,7 +255,7 @@ function renderDistrictTable(filterTerm = '') {
     const tr = document.createElement('tr');
     const rate = d.verification_rate_pct || 0;
     tr.innerHTML = `
-      <td style="font-weight: 600;">${d.district_name}</td>
+      <td style="font-weight: 600; color: #0f172a;">${d.district_name}</td>
       <td>${d.total.toLocaleString()}</td>
       <td><span class="badge badge-green">${(d.studying || 0).toLocaleString()}</span></td>
       <td><span class="badge badge-orange">${(d.not_studying || 0).toLocaleString()}</span></td>
@@ -313,7 +310,7 @@ function renderRecordTable(filterTerm = '') {
     tr.innerHTML = `
       <td>${r.district}</td>
       <td>${r.block}</td>
-      <td style="font-weight: 600;">${r.student_name}</td>
+      <td style="font-weight: 600; color: #0f172a;">${r.student_name}</td>
       <td>${r.gender}</td>
       <td>${r.category}</td>
       <td>${r.class}</td>

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-07T07:51:14.636710+00:00",
+  "generated_at": "2026-08-07T08:19:08.830404+00:00",
   "summary": {
     "total": 40069,
     "studying": 3581,
@@ -614,5 +614,67 @@
       "Unclear": 12,
       "Deceased": 0
     }
-  }
+  },
+  "reason_breakdown": [
+    {
+      "label": "Financial Problem",
+      "count": 178
+    },
+    {
+      "label": "Migrated for Labour/Work",
+      "count": 744
+    },
+    {
+      "label": "Marriage",
+      "count": 470
+    },
+    {
+      "label": "Admission Not Taken / TC Issue",
+      "count": 1082
+    },
+    {
+      "label": "Household / Domestic Responsibility",
+      "count": 326
+    },
+    {
+      "label": "Health / Medical Reason",
+      "count": 36
+    },
+    {
+      "label": "Death (Student/Family Member)",
+      "count": 64
+    },
+    {
+      "label": "Other",
+      "count": 12600
+    },
+    {
+      "label": "Call Not Received",
+      "count": 220
+    },
+    {
+      "label": "Wrong / Invalid Number",
+      "count": 635
+    },
+    {
+      "label": "Switched Off / Not Reachable",
+      "count": 309
+    },
+    {
+      "label": "No Information Available",
+      "count": 3276
+    },
+    {
+      "label": "Refused to Share Information",
+      "count": 0
+    },
+    {
+      "label": "Yet to be Contacted",
+      "count": 2555
+    },
+    {
+      "label": "Other",
+      "count": 13993
+    }
+  ]
 }

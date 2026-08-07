@@ -40,6 +40,8 @@ USAGE
 """
 import argparse
 import json
+import re
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,14 +80,12 @@ UNWILLING_VALUE = "Unwilling - Does Not Want to Study"
 # in this priority order — official caste category (SC/ST/OBC/General) wins
 # over a co-mentioned "Minority" religious tag, and anything that doesn't
 # clearly say one of these five is left as "Unspecified" rather than guessed.
-import re as _re
-
 _CATEGORY_RULES = [
-    ("SC", _re.compile(r"\bsc\b|s\.c\.?|jatav", _re.IGNORECASE)),
-    ("ST", _re.compile(r"\bst\b|3-st", _re.IGNORECASE)),
-    ("OBC", _re.compile(r"\bobc\b|o\.b\.c|oibc|\bob\b|\bbc\b|4-obc", _re.IGNORECASE)),
-    ("General", _re.compile(r"\bgen\b|general|genral|gernal|\bur\b|1-general", _re.IGNORECASE)),
-    ("Minority", _re.compile(r"muslim|minorit|minrity|\bmin\b|\bminor\b", _re.IGNORECASE)),
+    ("SC", re.compile(r"\bsc\b|s\.c\.?|jatav", re.IGNORECASE)),
+    ("ST", re.compile(r"\bst\b|3-st", re.IGNORECASE)),
+    ("OBC", re.compile(r"\bobc\b|o\.b\.c|oibc|\bob\b|\bbc\b|4-obc", re.IGNORECASE)),
+    ("General", re.compile(r"\bgen\b|general|genral|gernal|\bur\b|1-general", re.IGNORECASE)),
+    ("Minority", re.compile(r"muslim|minorit|minrity|\bmin\b|\bminor\b", re.IGNORECASE)),
 ]
 
 
@@ -95,6 +95,58 @@ def normalize_category(raw: str) -> str:
         if pattern.search(s):
             return canonical
     return "Unspecified"
+
+
+# Reason-wise breakup, applied to current Status + Remark text. Same intent
+# as export_for_looker.py's NOT_STUDYING_REASON_PATTERNS / UNCLEAR_REASON_
+# PATTERNS, kept in a fixed display order (Not-Studying-side categories,
+# then Unclear-side categories) matching the reference dashboard layout.
+NOT_STUDYING_REASON_PATTERNS = [
+    ("Financial Problem", r"poor\s*econ|economic|financial"),
+    ("Migrated for Labour/Work", r"labour|labor|labure|मजदूरी|working|\bjob\b|naukri|migrat"),
+    ("Marriage", r"marri|शादी|ससुराल"),
+    ("Admission Not Taken / TC Issue", r"tc\s*issu|no\s*admi|not\s*admi|admisson"),
+    ("Household / Domestic Responsibility", r"घरेलू|कृषि|किसानी|दुकान|home\s*work|household"),
+    ("Health / Medical Reason", r"sick|health|ill\b|disab"),
+]
+
+UNCLEAR_REASON_PATTERNS = [
+    ("Call Not Received", r"not\s*receiv|no\s*answer|not\s*answer|call\s*not|no\s*respond|not\s*respond"),
+    ("Wrong / Invalid Number", r"wrong\s*no|wrong\s*number|wrong\s*phone|invalid\s*number|incorrect\s*phone"),
+    ("Switched Off / Not Reachable", r"switch\s*off|switched\s*off|swich\s*off|swtich\s*off"),
+    ("No Information Available", r"no\s*info|data\s*not|active\s*for\s*import|status\s*not\s*known|no\s*data"),
+    ("Refused to Share Information", r"refused\s*to\s*share|not\s*share"),
+]
+
+# Two distinct fallback buckets ("Not Studying, no specific reason matched"
+# vs "Unclear, no specific reason matched") both display as plain "Other" —
+# kept as separate internal keys so they render as two separate bars.
+REASON_KEYS_ORDERED = (
+    [name for name, _ in NOT_STUDYING_REASON_PATTERNS]
+    + ["Death (Student/Family Member)", "Other (Not Studying)"]
+    + [name for name, _ in UNCLEAR_REASON_PATTERNS]
+    + ["Yet to be Contacted", "Other (Unclear)"]
+)
+REASON_DISPLAY_LABEL = {"Other (Not Studying)": "Other", "Other (Unclear)": "Other"}
+
+
+def detect_reason(bucket: str, current_status: str, remark: str) -> str:
+    text = unicodedata.normalize("NFC", f"{current_status} {remark}")
+    if bucket == "Deceased":
+        return "Death (Student/Family Member)"
+    if bucket == "Not Studying":
+        for name, pattern in NOT_STUDYING_REASON_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return name
+        return "Other (Not Studying)"
+    if bucket == "Unclear":
+        for name, pattern in UNCLEAR_REASON_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return name
+        if not current_status.strip() and not remark.strip():
+            return "Yet to be Contacted"
+        return "Other (Unclear)"
+    return None
 
 
 def match_key(row):
@@ -199,6 +251,17 @@ def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict
         "deceased_pct": pct(n_deceased, total),
     }
 
+    # --- Reason-wise breakup (Not Studying + Death + Unclear) ------------
+    reason_counts = Counter()
+    for r in rows:
+        reason_key = detect_reason(r["_bucket"], str(r.get("current Status") or ""), str(r.get("Remark") or ""))
+        if reason_key:
+            reason_counts[reason_key] += 1
+    reason_breakdown = [
+        {"label": REASON_DISPLAY_LABEL.get(key, key), "count": reason_counts.get(key, 0)}
+        for key in REASON_KEYS_ORDERED
+    ]
+
     # --- District breakdown ---------------------------------------------
     districts: dict[str, dict] = {}
     for r in rows:
@@ -252,6 +315,7 @@ def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict
         "willingness": willingness,
         "gender_breakdown": gender_breakdown,
         "category_breakdown": category_breakdown,
+        "reason_breakdown": reason_breakdown,
     }
 
     if include_records:

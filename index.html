@@ -84,19 +84,13 @@
       </div>
     </div>
 
-    <!-- Chart 4: District Status Breakdown (sortable) -->
+    <!-- Chart 4: Reason-wise Breakup -->
     <div class="chart-card col-8">
       <div class="chart-header">
-        <h2 class="chart-title">District-wise Status Breakdown</h2>
-        <select id="district-sort" class="sort-select">
-          <option value="unclear_pct">Sort: Highest Unclear % first</option>
-          <option value="total">Sort: Total records</option>
-          <option value="verification_rate_pct">Sort: Verification rate</option>
-          <option value="district_name">Sort: District name (A-Z)</option>
-        </select>
+        <h2 class="chart-title">Reason-wise Breakup — Not Studying & Unclear Cases</h2>
       </div>
       <div class="chart-container chart-container-tall">
-        <canvas id="chart-districts"></canvas>
+        <canvas id="chart-reasons"></canvas>
       </div>
     </div>
 
@@ -115,7 +109,15 @@
   <section class="table-card">
     <div class="table-header">
       <h2 class="chart-title">District-wise Verification Leaderboard</h2>
-      <input type="text" id="district-search" class="search-input" placeholder="Search District...">
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <select id="district-sort" class="sort-select">
+          <option value="unclear_pct">Sort: Highest Unclear % first</option>
+          <option value="total">Sort: Total records</option>
+          <option value="verification_rate_pct">Sort: Verification rate</option>
+          <option value="district_name">Sort: District name (A-Z)</option>
+        </select>
+        <input type="text" id="district-search" class="search-input" placeholder="Search District...">
+      </div>
     </div>
     <div class="table-wrapper">
       <table>
