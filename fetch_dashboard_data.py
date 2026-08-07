@@ -71,6 +71,31 @@ MATCH_COLS = [
 WILLING_VALUE = "Willing (Economic/External reason or unspecified)"
 UNWILLING_VALUE = "Unwilling - Does Not Want to Study"
 
+# The Category column is free-text and riddled with typos/case variants,
+# and some rows have education-level text ("7 - Upper Pr. and Secondary")
+# instead of a social category, or a mix of caste + religion ("OBC, Minority
+# ority"). Normalize to exactly one of the 5 canonical values below, checked
+# in this priority order — official caste category (SC/ST/OBC/General) wins
+# over a co-mentioned "Minority" religious tag, and anything that doesn't
+# clearly say one of these five is left as "Unspecified" rather than guessed.
+import re as _re
+
+_CATEGORY_RULES = [
+    ("SC", _re.compile(r"\bsc\b|s\.c\.?|jatav", _re.IGNORECASE)),
+    ("ST", _re.compile(r"\bst\b|3-st", _re.IGNORECASE)),
+    ("OBC", _re.compile(r"\bobc\b|o\.b\.c|oibc|\bob\b|\bbc\b|4-obc", _re.IGNORECASE)),
+    ("General", _re.compile(r"\bgen\b|general|genral|gernal|\bur\b|1-general", _re.IGNORECASE)),
+    ("Minority", _re.compile(r"muslim|minorit|minrity|\bmin\b|\bminor\b", _re.IGNORECASE)),
+]
+
+
+def normalize_category(raw: str) -> str:
+    s = (raw or "").strip()
+    for canonical, pattern in _CATEGORY_RULES:
+        if pattern.search(s):
+            return canonical
+    return "Unspecified"
+
 
 def match_key(row):
     return tuple(str(row.get(c) or "").strip() for c in MATCH_COLS)
@@ -200,17 +225,25 @@ def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict
     willingness = {"willing": willing, "unwilling": unwilling}
 
     # --- Gender / Category x status --------------------------------------
-    def crosstab(field_name, default="Unknown"):
+    def crosstab(field_name, default="Unknown", value_fn=None, skip_values=()):
         out: dict[str, dict] = {}
         for r in rows:
-            key = str(r.get(field_name) or default).strip() or default
+            raw = str(r.get(field_name) or default).strip() or default
+            key = value_fn(raw) if value_fn else raw
+            if key in skip_values:
+                continue
             bucket = out.setdefault(key, {"Studying": 0, "Not Studying": 0,
                                            "Unclear": 0, "Deceased": 0})
             bucket[r["_bucket"]] += 1
         return out
 
     gender_breakdown = crosstab("Gender")
-    category_breakdown = crosstab("Category", default="Unspecified")
+    # Only the 5 canonical social categories are shown — rows whose Category
+    # text doesn't clearly map to one of them (typos aside, some rows have
+    # education-level text like "7 - Upper Pr. and Secondary" instead of an
+    # actual category, or are blank) are dropped rather than shown as a
+    # misleading 6th "Unspecified" bucket.
+    category_breakdown = crosstab("Category", value_fn=normalize_category, skip_values=("Unspecified",))
 
     result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
