@@ -105,9 +105,17 @@ def write_tables(ws, data):
 
     w = data["willingness"]
     willing_header_row = len(rows_out) + 2
-    row("WILLINGNESS (Not Studying only)")
-    row("Willing (Economic/External/Unspecified)", "Unwilling")
-    row(w["willing"], w["unwilling"])
+    row("WILLING / UNWILLING / UNCLEAR")
+    row("Willing (Economic/External/Unspecified)", "Unwilling", "Unclear")
+    row(w["willing"], w["unwilling"], s["unclear"])
+    row()
+
+    reason_header_row = len(rows_out) + 2
+    row("REASON-WISE BREAKUP — NOT STUDYING & UNCLEAR CASES")
+    row("Reason", "No. of Students")
+    reason_items = data["reason_breakdown"]
+    for item in reason_items:
+        row(item["label"], item["count"])
     row()
 
     gender_header_row = len(rows_out) + 2
@@ -125,14 +133,6 @@ def write_tables(ws, data):
     for c, counts in category_items:
         row(c, counts["Studying"], counts["Not Studying"], counts["Unclear"], counts["Deceased"])
     row()
-
-    district_header_row = len(rows_out) + 2
-    row("DISTRICT-WISE BREAKDOWN (sorted by Unclear % desc)")
-    row("District", "Total", "Studying", "Not Studying", "Unclear", "Deceased",
-        "Unclear %", "Verification Rate %")
-    for d in data["districts"]:
-        row(d["district_name"], d["total"], d["studying"], d["not_studying"],
-            d["unclear"], d["deceased"], f"{d['unclear_pct']}%", f"{d['verification_rate_pct']}%")
 
     ws.update(rows_out, "A1")
     ws.format("A1", {"textFormat": {"bold": True, "fontSize": 14}})
@@ -177,12 +177,12 @@ def write_tables(ws, data):
         "kpi_value_row": kpi_value_row,
         "summary_header_row": summary_header_row,
         "willing_header_row": willing_header_row,
+        "reason_header_row": reason_header_row,
+        "reason_row_count": len(reason_items),
         "gender_header_row": gender_header_row,
         "gender_row_count": len(gender_items),
         "category_header_row": category_header_row,
         "category_row_count": len(category_items),
-        "district_header_row": district_header_row,
-        "district_row_count": len(data["districts"]),
     }
 
 
@@ -200,8 +200,8 @@ def build_chart_requests(sheet_id, layout):
     requests = []
     anchor_col = 9  # column J
 
-    def pos(row_0indexed):
-        p = chart_position(row_0indexed, anchor_col)
+    def pos(row_0indexed, height_px=300):
+        p = chart_position(row_0indexed, anchor_col, height_px=height_px)
         p["overlayPosition"]["anchorCell"]["sheetId"] = sheet_id
         return p
 
@@ -242,19 +242,44 @@ def build_chart_requests(sheet_id, layout):
     wval = whdr + 1
     requests.append({"addChart": {"chart": {
         "spec": {
-            "title": "Willingness to Resume (Not Studying)",
+            "title": "Willing / Unwilling / Unclear",
             "pieChart": {
                 "legendPosition": "RIGHT_LEGEND",
                 "domain": {"sourceRange": {"sources": [{
                     "sheetId": sheet_id, "startRowIndex": whdr - 1, "endRowIndex": whdr,
-                    "startColumnIndex": 0, "endColumnIndex": 2}]}},
+                    "startColumnIndex": 0, "endColumnIndex": 3}]}},
                 "series": {"sourceRange": {"sources": [{
                     "sheetId": sheet_id, "startRowIndex": wval - 1, "endRowIndex": wval,
-                    "startColumnIndex": 0, "endColumnIndex": 2}]}},
+                    "startColumnIndex": 0, "endColumnIndex": 3}]}},
             },
         },
         "position": pos(whdr + 17),
     }}})
+
+    # --- Reason-wise breakup horizontal bar chart -------------------------
+    rhdr = layout["reason_header_row"] + 1
+    rrows = layout["reason_row_count"]
+    if rrows:
+        requests.append({"addChart": {"chart": {
+            "spec": {
+                "title": "Reason-wise Breakup — Not Studying & Unclear Cases",
+                "basicChart": {
+                    "chartType": "BAR",
+                    "legendPosition": "NO_LEGEND",
+                    "domains": [{"domain": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": rhdr - 1,
+                        "endRowIndex": rhdr + rrows,
+                        "startColumnIndex": 0, "endColumnIndex": 1}]}}}],
+                    "series": [{"series": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": rhdr - 1,
+                        "endRowIndex": rhdr + rrows,
+                        "startColumnIndex": 1, "endColumnIndex": 2}]}},
+                        "targetAxis": "BOTTOM_AXIS"}],
+                    "headerCount": 1,
+                },
+            },
+            "position": pos(whdr + 38, height_px=420),
+        }}})
 
     # --- Gender x status stacked column chart ---------------------------
     ghdr = layout["gender_header_row"] + 1
@@ -272,7 +297,7 @@ def build_chart_requests(sheet_id, layout):
                     "headerCount": 1,
                 },
             },
-            "position": pos(whdr + 38),
+            "position": pos(whdr + 60),
         }}})
 
     # --- Category x status stacked column chart --------------------------
@@ -298,36 +323,9 @@ def build_chart_requests(sheet_id, layout):
                     "headerCount": 1,
                 },
             },
-            "position": pos(whdr + 59),
+            "position": pos(whdr + 81),
         }}})
 
-    # --- District chart: top 20 by Unclear % (already sorted) ------------
-    dhdr = layout["district_header_row"] + 1
-    drows = min(layout["district_row_count"], 20)
-    if drows:
-        requests.append({"addChart": {"chart": {
-            "spec": {
-                "title": "Top 20 Districts by Unclear %",
-                "basicChart": {
-                    "chartType": "BAR",
-                    "stackedType": "STACKED",
-                    "legendPosition": "BOTTOM_LEGEND",
-                    "domains": [{"domain": {"sourceRange": {"sources": [{
-                        "sheetId": sheet_id, "startRowIndex": dhdr - 1,
-                        "endRowIndex": dhdr + drows,
-                        "startColumnIndex": 0, "endColumnIndex": 1}]}}}],
-                    "series": [{"series": {"sourceRange": {"sources": [{
-                        "sheetId": sheet_id, "startRowIndex": dhdr - 1,
-                        "endRowIndex": dhdr + drows,
-                        "startColumnIndex": c, "endColumnIndex": c + 1}]}},
-                        "targetAxis": "BOTTOM_AXIS"} for c in (2, 3, 4)],
-                    "headerCount": 1,
-                },
-            },
-            "position": pos(whdr + 80),
-        }}})
-
-    # Fix in-place series column labels to match Studying/Not Studying/Unclear/Deceased order
     return requests
 
 
