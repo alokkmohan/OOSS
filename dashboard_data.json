@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-07T08:55:18.798716+00:00",
+  "generated_at": "2026-08-07T09:01:30.475831+00:00",
   "summary": {
     "total": 40069,
     "studying": 3632,
@@ -23,7 +23,7 @@
       "verification_rate_pct": 0.0
     },
     {
-      "district_name": "GB NAGAR",
+      "district_name": "GAUTAM BUDDHA NAGAR",
       "total": 2051,
       "studying": 0,
       "not_studying": 0,
@@ -43,16 +43,6 @@
       "verification_rate_pct": 0.0
     },
     {
-      "district_name": "Mahoba",
-      "total": 2,
-      "studying": 0,
-      "not_studying": 0,
-      "unclear": 2,
-      "deceased": 0,
-      "unclear_pct": 100.0,
-      "verification_rate_pct": 0.0
-    },
-    {
       "district_name": "SHAHJAHANPUR",
       "total": 3965,
       "studying": 51,
@@ -63,7 +53,7 @@
       "verification_rate_pct": 1.3
     },
     {
-      "district_name": "pratapgarh",
+      "district_name": "PRATAPGARH",
       "total": 1852,
       "studying": 17,
       "not_studying": 39,
@@ -83,16 +73,6 @@
       "verification_rate_pct": 5.7
     },
     {
-      "district_name": "moradabad",
-      "total": 11,
-      "studying": 3,
-      "not_studying": 0,
-      "unclear": 8,
-      "deceased": 0,
-      "unclear_pct": 72.7,
-      "verification_rate_pct": 27.3
-    },
-    {
       "district_name": "GHAZIPUR",
       "total": 604,
       "studying": 94,
@@ -103,7 +83,7 @@
       "verification_rate_pct": 28.3
     },
     {
-      "district_name": "Ballia",
+      "district_name": "BALLIA",
       "total": 1200,
       "studying": 307,
       "not_studying": 48,
@@ -143,7 +123,7 @@
       "verification_rate_pct": 36.3
     },
     {
-      "district_name": "Saharanpur",
+      "district_name": "SAHARANPUR",
       "total": 2520,
       "studying": 184,
       "not_studying": 729,
@@ -174,16 +154,16 @@
     },
     {
       "district_name": "KHERI",
-      "total": 2957,
+      "total": 2980,
       "studying": 81,
-      "not_studying": 1167,
-      "unclear": 1707,
+      "not_studying": 1189,
+      "unclear": 1708,
       "deceased": 2,
-      "unclear_pct": 57.7,
-      "verification_rate_pct": 42.2
+      "unclear_pct": 57.3,
+      "verification_rate_pct": 42.6
     },
     {
-      "district_name": "Amroha",
+      "district_name": "JYOTIBA PHULE NAGAR (AMROHA)",
       "total": 264,
       "studying": 119,
       "not_studying": 0,
@@ -263,27 +243,17 @@
       "verification_rate_pct": 55.9
     },
     {
-      "district_name": "Moradabad",
-      "total": 404,
-      "studying": 99,
-      "not_studying": 126,
-      "unclear": 175,
-      "deceased": 4,
-      "unclear_pct": 43.3,
-      "verification_rate_pct": 55.7
-    },
-    {
       "district_name": "MORADABAD",
-      "total": 160,
-      "studying": 25,
-      "not_studying": 85,
-      "unclear": 49,
-      "deceased": 1,
-      "unclear_pct": 30.6,
-      "verification_rate_pct": 68.8
+      "total": 575,
+      "studying": 127,
+      "not_studying": 211,
+      "unclear": 232,
+      "deceased": 5,
+      "unclear_pct": 40.3,
+      "verification_rate_pct": 58.8
     },
     {
-      "district_name": "SAMBHAL",
+      "district_name": "SAMBHAL (BHIM NAGAR)",
       "total": 772,
       "studying": 167,
       "not_studying": 390,
@@ -303,7 +273,7 @@
       "verification_rate_pct": 74.2
     },
     {
-      "district_name": "Hapur",
+      "district_name": "HAPUR (PANCHSHEEL NAGAR)",
       "total": 125,
       "studying": 10,
       "not_studying": 90,
@@ -333,7 +303,7 @@
       "verification_rate_pct": 83.4
     },
     {
-      "district_name": "Kanpur Dehat",
+      "district_name": "KANPUR DEHAT",
       "total": 121,
       "studying": 81,
       "not_studying": 24,
@@ -353,7 +323,7 @@
       "verification_rate_pct": 87.9
     },
     {
-      "district_name": "Kaushambi",
+      "district_name": "KAUSHAMBI",
       "total": 416,
       "studying": 173,
       "not_studying": 196,
@@ -403,7 +373,7 @@
       "verification_rate_pct": 90.3
     },
     {
-      "district_name": "Chandauli",
+      "district_name": "CHANDAULI",
       "total": 380,
       "studying": 131,
       "not_studying": 218,
@@ -414,13 +384,13 @@
     },
     {
       "district_name": "MAHOBA",
-      "total": 408,
+      "total": 410,
       "studying": 97,
       "not_studying": 285,
-      "unclear": 26,
+      "unclear": 28,
       "deceased": 0,
-      "unclear_pct": 6.4,
-      "verification_rate_pct": 93.6
+      "unclear_pct": 6.8,
+      "verification_rate_pct": 93.2
     },
     {
       "district_name": "FARRUKHABAD",
@@ -431,16 +401,6 @@
       "deceased": 2,
       "unclear_pct": 6.3,
       "verification_rate_pct": 92.9
-    },
-    {
-      "district_name": "LAKHIMPUR KHERI",
-      "total": 23,
-      "studying": 0,
-      "not_studying": 22,
-      "unclear": 1,
-      "deceased": 0,
-      "unclear_pct": 4.3,
-      "verification_rate_pct": 95.7
     },
     {
       "district_name": "MAINPURI",
@@ -454,9 +414,9 @@
     },
     {
       "district_name": "BAREILLY",
-      "total": 547,
-      "studying": 40,
-      "not_studying": 486,
+      "total": 558,
+      "studying": 48,
+      "not_studying": 489,
       "unclear": 21,
       "deceased": 0,
       "unclear_pct": 3.8,
@@ -473,17 +433,7 @@
       "verification_rate_pct": 98.4
     },
     {
-      "district_name": "Bareilly",
-      "total": 11,
-      "studying": 8,
-      "not_studying": 3,
-      "unclear": 0,
-      "deceased": 0,
-      "unclear_pct": 0.0,
-      "verification_rate_pct": 100.0
-    },
-    {
-      "district_name": "Barabanki",
+      "district_name": "BARABANKI",
       "total": 1292,
       "studying": 2,
       "not_studying": 1288,
@@ -493,7 +443,7 @@
       "verification_rate_pct": 99.8
     },
     {
-      "district_name": "Sonbhadra",
+      "district_name": "SONBHADRA",
       "total": 490,
       "studying": 14,
       "not_studying": 476,

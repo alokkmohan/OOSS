@@ -73,6 +73,59 @@ MATCH_COLS = [
 WILLING_VALUE = "Willing (Economic/External reason or unspecified)"
 UNWILLING_VALUE = "Unwilling - Does Not Want to Study"
 
+# The 75 UP districts targeted by the master list (from School Master.xlsx —
+# not shipped in the repo since it's a large local data file, but the
+# district name list itself is small and stable enough to hardcode). Used to
+# normalize district-name spelling/case variants and to report which of the
+# 75 haven't sent data at all.
+MASTER_DISTRICTS = [
+    "AGRA", "ALIGARH", "AMBEDKAR NAGAR", "AMETHI - CSM NAGAR", "AURAIYA",
+    "AZAMGARH", "BAGHPAT", "BAHRAICH", "BALLIA", "BALRAMPUR", "BANDA",
+    "BARABANKI", "BAREILLY", "BASTI", "BHADOI", "BIJNOR", "BUDAUN",
+    "BULANDSHAHR", "CHANDAULI", "CHITRAKOOT", "DEORIA", "ETAH", "ETAWAH",
+    "FAIZABAD", "FARRUKHABAD", "FATEHPUR", "FIROZABAD", "GAUTAM BUDDHA NAGAR",
+    "GHAZIABAD", "GHAZIPUR", "GONDA", "GORAKHPUR", "HAMIRPUR (U.P.)",
+    "HAPUR (PANCHSHEEL NAGAR)", "HARDOI", "HATHRAS", "JALAUN", "JAUNPUR",
+    "JHANSI", "JYOTIBA PHULE NAGAR (AMROHA)", "KANNAUJ", "KANPUR DEHAT",
+    "KANPUR NAGAR", "KANSHIRAM NAGAR", "KAUSHAMBI", "KHERI", "KUSHINAGAR",
+    "LALITPUR", "LUCKNOW", "MAHARAJGANJ", "MAHOBA", "MAINPURI", "MATHURA",
+    "MAU", "MEERUT", "MIRZAPUR", "MORADABAD", "MUZAFFARNAGAR", "PILIBHIT",
+    "PRATAPGARH", "PRAYAGRAJ", "RAE BARELI", "RAMPUR", "SAHARANPUR",
+    "SAMBHAL (BHIM NAGAR)", "SANT KABIR NAGAR", "SHAHJAHANPUR",
+    "SHAMLI (PRABUDH NAGAR)", "SHRAWASTI", "SIDDHARTHNAGAR", "SITAPUR",
+    "SONBHADRA", "SULTANPUR", "UNNAO", "VARANASI",
+]
+MASTER_DISTRICTS_SET = set(MASTER_DISTRICTS)
+
+# Variant spellings actually seen in the source tabs that don't exact-match
+# the master list (case differences are handled separately by uppercasing).
+DISTRICT_ALIASES = {
+    "GB NAGAR": "GAUTAM BUDDHA NAGAR",
+    "LAKHIMPUR KHERI": "KHERI",
+    "SAMBHAL": "SAMBHAL (BHIM NAGAR)",
+    "HAPUR": "HAPUR (PANCHSHEEL NAGAR)",
+    "AMROHA": "JYOTIBA PHULE NAGAR (AMROHA)",
+    "BHADOHI": "BHADOI",
+    "SHRAVASTI": "SHRAWASTI",
+    "ALLAHABAD": "PRAYAGRAJ",
+    "AMETHI": "AMETHI - CSM NAGAR",
+    "CSM NAGAR": "AMETHI - CSM NAGAR",
+    "KASGANJ": "KANSHIRAM NAGAR",
+    "SHAMLI": "SHAMLI (PRABUDH NAGAR)",
+    "PRABUDH NAGAR": "SHAMLI (PRABUDH NAGAR)",
+}
+
+
+def normalize_district(raw: str) -> str:
+    s = str(raw or "").strip().upper()
+    if not s:
+        return "Unknown"
+    if s in DISTRICT_ALIASES:
+        return DISTRICT_ALIASES[s]
+    if s in MASTER_DISTRICTS_SET:
+        return s
+    return s
+
 # The Category column is free-text and riddled with typos/case variants,
 # and some rows have education-level text ("7 - Upper Pr. and Secondary")
 # instead of a social category, or a mix of caste + religion ("OBC, Minority
@@ -307,7 +360,7 @@ def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict
     # --- District breakdown ---------------------------------------------
     districts: dict[str, dict] = {}
     for r in rows:
-        d = str(r.get("District Name") or "Unknown").strip()
+        d = normalize_district(r.get("District Name"))
         entry = districts.setdefault(d, {
             "district_name": d, "total": 0, "studying": 0,
             "not_studying": 0, "unclear": 0, "deceased": 0,
