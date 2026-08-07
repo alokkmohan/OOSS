@@ -24,16 +24,21 @@ function initDashboard() {
   renderAll();
 }
 
+function on(id, event, handler) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, handler);
+}
+
 function setupEventListeners() {
-  document.getElementById('district-search').addEventListener('input', (e) => {
-    renderDistrictTable(e.target.value);
-  });
-  document.getElementById('district-sort').addEventListener('change', (e) => {
+  // A stale-cached HTML/JS pair (mismatched element IDs across a deploy)
+  // shouldn't crash the whole page — on() no-ops instead of throwing.
+  on('district-search', 'input', (e) => renderDistrictTable(e.target.value));
+  on('district-sort', 'change', (e) => {
     districtSort = e.target.value;
-    renderDistrictTable(document.getElementById('district-search').value);
+    renderDistrictTable(document.getElementById('district-search')?.value || '');
   });
-  document.getElementById('district-download').addEventListener('click', () => {
-    downloadDistrictCSV(document.getElementById('district-search').value);
+  on('district-download', 'click', () => {
+    downloadDistrictCSV(document.getElementById('district-search')?.value || '');
   });
 }
 
