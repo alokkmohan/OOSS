@@ -315,17 +315,27 @@ def build_chart_requests(sheet_id, layout):
                 "hiddenDimensionStrategy": "SHOW_ALL",
                 "basicChart": {
                     "chartType": "COLUMN",
-                    "stackedType": "STACKED",
                     "legendPosition": "BOTTOM_LEGEND",
                     "domains": [{"domain": {"sourceRange": {"sources": [{
                         "sheetId": sheet_id, "startRowIndex": ghdr - 1,
                         "endRowIndex": ghdr + grows,
                         "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 1}]}}}],
-                    "series": [{"series": {"sourceRange": {"sources": [{
-                        "sheetId": sheet_id, "startRowIndex": ghdr - 1,
-                        "endRowIndex": ghdr + grows,
-                        "startColumnIndex": DATA_COL_OFFSET + c, "endColumnIndex": DATA_COL_OFFSET + c + 1}]}},
-                        "targetAxis": "LEFT_AXIS"} for c in (1, 2, 3, 4)],
+                    # Only Studying (green) vs Not Studying (red), grouped
+                    # (not stacked) — matches the web dashboard's chart.
+                    "series": [
+                        {"series": {"sourceRange": {"sources": [{
+                            "sheetId": sheet_id, "startRowIndex": ghdr - 1,
+                            "endRowIndex": ghdr + grows,
+                            "startColumnIndex": DATA_COL_OFFSET + 1, "endColumnIndex": DATA_COL_OFFSET + 2}]}},
+                            "targetAxis": "LEFT_AXIS",
+                            "color": {"red": 0.13, "green": 0.77, "blue": 0.37}},
+                        {"series": {"sourceRange": {"sources": [{
+                            "sheetId": sheet_id, "startRowIndex": ghdr - 1,
+                            "endRowIndex": ghdr + grows,
+                            "startColumnIndex": DATA_COL_OFFSET + 2, "endColumnIndex": DATA_COL_OFFSET + 3}]}},
+                            "targetAxis": "LEFT_AXIS",
+                            "color": {"red": 0.94, "green": 0.27, "blue": 0.27}},
+                    ],
                     "headerCount": 1,
                 },
             },
