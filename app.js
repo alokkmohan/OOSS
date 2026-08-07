@@ -36,6 +36,36 @@ function setupEventListeners() {
   document.getElementById('record-search').addEventListener('input', (e) => {
     renderRecordTable(e.target.value);
   });
+  document.getElementById('district-download').addEventListener('click', () => {
+    downloadDistrictCSV(document.getElementById('district-search').value);
+  });
+}
+
+function downloadDistrictCSV(filterTerm = '') {
+  const list = sortedDistricts().filter(d =>
+    d.district_name.toLowerCase().includes(filterTerm.toLowerCase())
+  );
+
+  const headers = ['District Name', 'Total Surveyed', 'Known Studying', 'Known Not Studying',
+    'Unclear / Pending', 'Deceased', 'Verification Rate (%)'];
+  const escapeCsv = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [headers.map(escapeCsv).join(',')];
+  list.forEach(d => {
+    lines.push([
+      d.district_name, d.total, d.studying || 0, d.not_studying || 0,
+      d.unclear || 0, d.deceased || 0, d.verification_rate_pct || 0,
+    ].map(escapeCsv).join(','));
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `district_verification_leaderboard_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function renderAll() {

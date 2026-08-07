@@ -221,6 +221,22 @@ body {
   border-color: var(--accent-blue);
 }
 
+.download-btn {
+  background: var(--accent-blue);
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.download-btn:hover {
+  background: #0284c7;
+}
+
 .table-wrapper {
   overflow-x: auto;
   max-height: 400px;
