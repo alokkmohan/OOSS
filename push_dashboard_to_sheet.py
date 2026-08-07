@@ -232,7 +232,12 @@ def build_chart_requests(sheet_id, layout):
         return p
 
     # --- Status breakdown pie chart -----------------------------------
-    hdr = layout["summary_header_row"] + 1
+    # summary_header_row already points at the header line itself (text
+    # labels); a pie chart's domain/series each span exactly 1 row, unlike
+    # the multi-row basic charts below, so no "+1" belongs here — that was
+    # accidentally pointing domain at the values row and series at the
+    # percentages row (numbers as "labels", percentages as "values").
+    hdr = layout["summary_header_row"]
     val = hdr + 1
     requests.append({"addChart": {"chart": {
         "spec": {
@@ -254,7 +259,8 @@ def build_chart_requests(sheet_id, layout):
     }}})
 
     # --- Willingness pie chart -----------------------------------------
-    whdr = layout["willing_header_row"] + 1
+    # Same fix as the status pie above — no "+1" for a single-row domain.
+    whdr = layout["willing_header_row"]
     wval = whdr + 1
     requests.append({"addChart": {"chart": {
         "spec": {
