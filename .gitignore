@@ -1,0 +1,9 @@
+service_account.json
+outputs/
+__pycache__/
+*.pyc
+
+# Contains raw student PII (names, mobile numbers, addresses) — never push
+# these to a public repo.
+*.xlsx
+dashboard_data.json

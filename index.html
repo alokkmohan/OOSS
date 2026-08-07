@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Out-of-School Student Tracking Dashboard — UP Education Dept.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Dashboard Header -->
+  <header class="dashboard-header">
+    <div class="header-title">
+      <h1>Out-of-School Student Status Dashboard</h1>
+      <p>Uttar Pradesh Secondary Education Department — Dropout Tracking & Classification System</p>
+    </div>
+    <div class="header-meta">
+      <span id="generated-at" class="generated-at"></span>
+    </div>
+  </header>
+
+  <!-- KPI Scorecards Grid -->
+  <section class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">Total Student Records</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-subtext" id="kpi-total-sub">Across all responding districts</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Known - Studying</div>
+      <div class="kpi-value" id="kpi-studying">—</div>
+      <div class="kpi-subtext" id="kpi-studying-sub"></div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Known - Not Studying / Dropout</div>
+      <div class="kpi-value" id="kpi-dropout">—</div>
+      <div class="kpi-subtext" id="kpi-dropout-sub"></div>
+    </div>
+    <div class="kpi-card gray">
+      <div class="kpi-label">Unclear / No Real Status</div>
+      <div class="kpi-value" id="kpi-unclear">—</div>
+      <div class="kpi-subtext" id="kpi-unclear-sub"></div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Deceased Cases Flagged</div>
+      <div class="kpi-value" id="kpi-deceased">—</div>
+      <div class="kpi-subtext" id="kpi-deceased-sub">Flagged in Remarks</div>
+    </div>
+  </section>
+
+  <!-- Interactive Charts Grid -->
+  <section class="charts-grid">
+    <!-- Chart 1: Status Category Distribution -->
+    <div class="chart-card col-4">
+      <div class="chart-header">
+        <h2 class="chart-title">Status Breakdown</h2>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-status"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 2: Willingness (Not Studying only) -->
+    <div class="chart-card col-4">
+      <div class="chart-header">
+        <h2 class="chart-title">Willingness to Resume (Not Studying)</h2>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-willingness"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 3: Social Category Breakdown -->
+    <div class="chart-card col-4">
+      <div class="chart-header">
+        <h2 class="chart-title">Status by Social Category</h2>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-category"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 4: District Status Breakdown (sortable) -->
+    <div class="chart-card col-8">
+      <div class="chart-header">
+        <h2 class="chart-title">District-wise Status Breakdown</h2>
+        <select id="district-sort" class="sort-select">
+          <option value="unclear_pct">Sort: Highest Unclear % first</option>
+          <option value="total">Sort: Total records</option>
+          <option value="verification_rate_pct">Sort: Verification rate</option>
+          <option value="district_name">Sort: District name (A-Z)</option>
+        </select>
+      </div>
+      <div class="chart-container chart-container-tall">
+        <canvas id="chart-districts"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 5: Gender Analysis -->
+    <div class="chart-card col-4">
+      <div class="chart-header">
+        <h2 class="chart-title">Status by Gender</h2>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-gender"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- District Breakdown Table Section -->
+  <section class="table-card">
+    <div class="table-header">
+      <h2 class="chart-title">District-wise Verification Leaderboard</h2>
+      <input type="text" id="district-search" class="search-input" placeholder="Search District...">
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>District Name</th>
+            <th>Total Surveyed</th>
+            <th>Known Studying</th>
+            <th>Known Not Studying</th>
+            <th>Unclear / Pending</th>
+            <th>Verification Rate (%)</th>
+          </tr>
+        </thead>
+        <tbody id="table-district-body">
+          <!-- Populated by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Student Records Table Section -->
+  <section class="table-card">
+    <div class="table-header">
+      <h2 class="chart-title">Student Records</h2>
+      <input type="text" id="record-search" class="search-input" placeholder="Search name, district, remark...">
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>District</th>
+            <th>Block</th>
+            <th>Student Name</th>
+            <th>Gender</th>
+            <th>Category</th>
+            <th>Class</th>
+            <th>Status</th>
+            <th>Remark</th>
+          </tr>
+        </thead>
+        <tbody id="table-record-body">
+          <!-- Populated by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+    <div class="table-footer" id="record-table-footer"></div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
