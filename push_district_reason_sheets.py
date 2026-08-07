@@ -38,7 +38,9 @@ from fetch_dashboard_data import (
     DEFAULT_SHEET_ID,
     MASTER_DISTRICTS,
     load_rows,
+    normalize_category,
     normalize_district,
+    normalize_gender,
 )
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -71,6 +73,9 @@ REASON_ROWS_SPEC = (
     + [(name, "Unclear / Not Reachable") for name, _ in UNCLEAR_REASON_PATTERNS]
     + [("Yet to be Contacted", "Unclear / Not Reachable"), ("Other", "Unclear / Not Reachable")]
 )
+
+GENDER_ORDER = ["Male", "Female", "Transgender"]
+CATEGORY_ORDER = ["SC", "ST", "OBC", "General", "Minority"]
 
 
 def detect_reason_detailed(bucket: str, current_status: str, remark: str) -> str:
@@ -152,10 +157,37 @@ def build_reason_analysis_rows(rows: list[dict]) -> list[list]:
     return out
 
 
+def build_status_breakup_block(rows: list[dict], normalizer, field: str, group_col_name: str, order: list[str]) -> list[list]:
+    """One [title row, header row, data rows..., TOTAL row] block for a
+    Gender- or Social-Category-wise breakdown by Status. Groups outside
+    `order` (e.g. "Unspecified") are excluded, matching the web dashboard's
+    charts for the same fields."""
+    stats = {g: {"Studying": 0, "Not Studying": 0, "Unclear": 0, "Deceased": 0} for g in order}
+    for r in rows:
+        g = normalizer(str(r.get(field) or ""))
+        if g in stats:
+            stats[g][r["_bucket"]] += 1
+
+    title = f"{group_col_name.upper()}-WISE BREAKUP BY STATUS"
+    header = [group_col_name, "Known - Studying", "Known - Not Studying / Dropout", "Unclear", "Death Case", "Total"]
+    block = [[title], header]
+    totals = [0, 0, 0, 0, 0]
+    for g in order:
+        s = stats[g]
+        row_total = s["Studying"] + s["Not Studying"] + s["Unclear"] + s["Deceased"]
+        vals = [s["Studying"], s["Not Studying"], s["Unclear"], s["Deceased"], row_total]
+        block.append([g] + vals)
+        totals = [t + v for t, v in zip(totals, vals)]
+    block.append(["TOTAL"] + totals)
+    return block
+
+
 def get_or_replace_ws(sh, title, rows, cols, index=None):
     try:
         ws = sh.worksheet(title)
         ws.clear()
+        if ws.row_count < rows or ws.col_count < cols:
+            ws.resize(rows=max(ws.row_count, rows), cols=max(ws.col_count, cols))
         return ws
     except gspread.exceptions.WorksheetNotFound:
         return sh.add_worksheet(title=title, rows=rows, cols=cols, index=index)
@@ -194,6 +226,21 @@ def style_reason_analysis(ws, not_studying_count, unclear_count):
     ws.freeze(rows=1)
 
 
+def style_status_breakup_block(ws, start_row: int, n_group_rows: int):
+    """start_row is the 1-indexed row of the block's title line."""
+    dark_navy = {"backgroundColor": {"red": 0.11, "green": 0.22, "blue": 0.40},
+                 "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}}}
+    title_row = start_row
+    header_row = start_row + 1
+    data_start = header_row + 1
+    data_end = data_start + n_group_rows - 1
+    total_row = data_end + 1
+
+    ws.format(f"A{title_row}:F{title_row}", {"textFormat": {"bold": True, "fontSize": 12}})
+    ws.format(f"A{header_row}:F{header_row}", {**dark_navy, "wrapStrategy": "WRAP"})
+    ws.format(f"A{total_row}:F{total_row}", dark_navy)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--sheet-id", default=DEFAULT_SHEET_ID)
@@ -222,10 +269,28 @@ def main():
     reason_table = build_reason_analysis_rows(rows)
     not_studying_count = len(NOT_STUDYING_REASON_PATTERNS) + 2  # + Death + Other
     unclear_count = len(UNCLEAR_REASON_PATTERNS) + 2  # + Yet to be Contacted + Other
-    ws2 = get_or_replace_ws(sh, REASON_ANALYSIS_TAB, rows=len(reason_table) + 5, cols=4, index=1)
+
+    gender_block = build_status_breakup_block(rows, normalize_gender, "Gender", "Gender", GENDER_ORDER)
+    category_block = build_status_breakup_block(rows, normalize_category, "Category", "Social Category", CATEGORY_ORDER)
+
+    gender_start = len(reason_table) + 3
+    category_start = gender_start + len(gender_block) + 2
+
+    ws2 = get_or_replace_ws(
+        sh, REASON_ANALYSIS_TAB,
+        rows=category_start + len(category_block) + 5, cols=6, index=1,
+    )
     ws2.update(reason_table, "A1")
     style_reason_analysis(ws2, not_studying_count, unclear_count)
+
+    ws2.update(gender_block, f"A{gender_start}")
+    style_status_breakup_block(ws2, gender_start, len(GENDER_ORDER))
+
+    ws2.update(category_block, f"A{category_start}")
+    style_status_breakup_block(ws2, category_start, len(CATEGORY_ORDER))
+
     print(f"  {not_studying_count + unclear_count} reason categories + Studying reconciliation + TOTAL rows.")
+    print("  Added Gender-wise and Social Category-wise breakup blocks.")
 
     print("Done.")
 
