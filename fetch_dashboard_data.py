@@ -97,6 +97,24 @@ def normalize_category(raw: str) -> str:
     return "Unspecified"
 
 
+# Gender has the same case/typo problem ("MALE" vs "Male", "FEMALE" vs
+# "female" vs stray-prefix typos "RFEMALE"/"NFEMALE") which without
+# normalization shows up as duplicate bars for the same gender.
+_GENDER_RULES = [
+    ("Transgender", re.compile(r"transgender", re.IGNORECASE)),
+    ("Female", re.compile(r"female", re.IGNORECASE)),
+    ("Male", re.compile(r"\bmale\b", re.IGNORECASE)),
+]
+
+
+def normalize_gender(raw: str) -> str:
+    s = (raw or "").strip()
+    for canonical, pattern in _GENDER_RULES:
+        if pattern.search(s):
+            return canonical
+    return "Unspecified"
+
+
 # Reason-wise breakup, applied to current Status + Remark text. Same intent
 # as export_for_looker.py's NOT_STUDYING_REASON_PATTERNS / UNCLEAR_REASON_
 # PATTERNS, kept in a fixed display order (Not-Studying-side categories,
@@ -300,7 +318,7 @@ def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict
             bucket[r["_bucket"]] += 1
         return out
 
-    gender_breakdown = crosstab("Gender")
+    gender_breakdown = crosstab("Gender", value_fn=normalize_gender, skip_values=("Unspecified",))
     # Only the 5 canonical social categories are shown — rows whose Category
     # text doesn't clearly map to one of them (typos aside, some rows have
     # education-level text like "7 - Upper Pr. and Secondary" instead of an

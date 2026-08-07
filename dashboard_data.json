@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-07T08:27:00.505039+00:00",
+  "generated_at": "2026-08-07T08:41:42.420225+00:00",
   "summary": {
     "total": 40069,
     "studying": 3581,
@@ -528,58 +528,22 @@
     "unwilling": 819
   },
   "gender_breakdown": {
-    "MALE": {
-      "Studying": 2125,
-      "Not Studying": 8988,
-      "Unclear": 12696,
+    "Male": {
+      "Studying": 2130,
+      "Not Studying": 8992,
+      "Unclear": 12712,
       "Deceased": 20
     },
-    "FEMALE": {
-      "Studying": 1448,
-      "Not Studying": 6426,
-      "Unclear": 8245,
+    "Female": {
+      "Studying": 1451,
+      "Not Studying": 6443,
+      "Unclear": 8265,
       "Deceased": 44
     },
-    "Male": {
-      "Studying": 5,
-      "Not Studying": 4,
-      "Unclear": 16,
-      "Deceased": 0
-    },
-    "Female": {
-      "Studying": 3,
-      "Not Studying": 16,
-      "Unclear": 18,
-      "Deceased": 0
-    },
-    "TRANSGENDER": {
+    "Transgender": {
       "Studying": 0,
       "Not Studying": 1,
       "Unclear": 0,
-      "Deceased": 0
-    },
-    "female": {
-      "Studying": 0,
-      "Not Studying": 1,
-      "Unclear": 0,
-      "Deceased": 0
-    },
-    "Nil": {
-      "Studying": 0,
-      "Not Studying": 0,
-      "Unclear": 11,
-      "Deceased": 0
-    },
-    "RFEMALE": {
-      "Studying": 0,
-      "Not Studying": 0,
-      "Unclear": 1,
-      "Deceased": 0
-    },
-    "NFEMALE": {
-      "Studying": 0,
-      "Not Studying": 0,
-      "Unclear": 1,
       "Deceased": 0
     }
   },
