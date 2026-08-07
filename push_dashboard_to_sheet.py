@@ -114,7 +114,7 @@ def write_tables(ws, data):
 
     summary_header_row = len(data_rows) + 2  # 1-indexed row of the header line below
     row("SUMMARY")
-    row("Total", "Studying", "Not Studying", "Unclear", "Deceased")
+    row("Total", "Studying", "Not Studying", "Unclear", "Death Cases")
     row(s["total"], s["studying"], s["not_studying"], s["unclear"], s["deceased"])
     row("100%", f"{s['studying_pct']}%", f"{s['not_studying_pct']}%",
         f"{s['unclear_pct']}%", f"{s['deceased_pct']}%")
@@ -137,7 +137,7 @@ def write_tables(ws, data):
 
     gender_header_row = len(data_rows) + 2
     row("GENDER x STATUS")
-    row("Gender", "Studying", "Not Studying", "Unclear", "Deceased")
+    row("Gender", "Studying", "Not Studying", "Unclear", "Death Cases")
     gender_items = sorted(data["gender_breakdown"].items())
     for g, counts in gender_items:
         row(g, counts["Studying"], counts["Not Studying"], counts["Unclear"], counts["Deceased"])
@@ -145,7 +145,7 @@ def write_tables(ws, data):
 
     category_header_row = len(data_rows) + 2
     row("SOCIAL CATEGORY x STATUS")
-    row("Category", "Studying", "Not Studying", "Unclear", "Deceased")
+    row("Category", "Studying", "Not Studying", "Unclear", "Death Cases")
     category_items = sorted(data["category_breakdown"].items())
     for c, counts in category_items:
         row(c, counts["Studying"], counts["Not Studying"], counts["Unclear"], counts["Deceased"])
