@@ -1,6 +1,5 @@
 let dashboardData = null;
 let districtSort = 'unclear_pct';
-const RECORD_PAGE_SIZE = 200;
 const DISTRICT_TARGET = 75;
 
 // Chart Instances
@@ -32,9 +31,6 @@ function setupEventListeners() {
   document.getElementById('district-sort').addEventListener('change', (e) => {
     districtSort = e.target.value;
     renderDistrictTable(document.getElementById('district-search').value);
-  });
-  document.getElementById('record-search').addEventListener('input', (e) => {
-    renderRecordTable(e.target.value);
   });
   document.getElementById('district-download').addEventListener('click', () => {
     downloadDistrictCSV(document.getElementById('district-search').value);
@@ -69,15 +65,20 @@ function downloadDistrictCSV(filterTerm = '') {
 }
 
 function renderAll() {
-  renderGeneratedAt();
-  renderKPIs();
-  renderStatusChart();
-  renderWillingnessChart();
-  renderCategoryChart();
-  renderReasonChart();
-  renderGenderChart();
-  renderDistrictTable();
-  renderRecordTable();
+  // Each render step runs independently — if a browser has a stale cached
+  // index.html/app.js pair mid-deploy (mismatched DOM vs script), one
+  // missing element shouldn't take down every chart after it.
+  const steps = [
+    renderGeneratedAt, renderKPIs, renderStatusChart, renderWillingnessChart,
+    renderCategoryChart, renderReasonChart, renderGenderChart, renderDistrictTable,
+  ];
+  for (const step of steps) {
+    try {
+      step();
+    } catch (err) {
+      console.error(`Dashboard render step failed: ${step.name}`, err);
+    }
+  }
 }
 
 function renderGeneratedAt() {
@@ -301,56 +302,3 @@ function renderDistrictTable(filterTerm = '') {
   });
 }
 
-const STATUS_BADGE_CLASS = {
-  'Studying': 'badge-green',
-  'Not Studying': 'badge-orange',
-  'Unclear': 'badge-gray',
-  'Deceased': 'badge-red'
-};
-
-function renderRecordTable(filterTerm = '') {
-  const section = document.getElementById('record-table-section');
-  if (!dashboardData.records) {
-    section.style.display = 'none';
-    return;
-  }
-  section.style.display = '';
-
-  const tbody = document.getElementById('table-record-body');
-  const footer = document.getElementById('record-table-footer');
-  tbody.innerHTML = '';
-
-  const term = filterTerm.trim().toLowerCase();
-  const all = dashboardData.records;
-  const filtered = term
-    ? all.filter(r =>
-        r.student_name.toLowerCase().includes(term) ||
-        r.district.toLowerCase().includes(term) ||
-        r.block.toLowerCase().includes(term) ||
-        r.remark.toLowerCase().includes(term) ||
-        r.current_status.toLowerCase().includes(term)
-      )
-    : all;
-
-  const shown = filtered.slice(0, RECORD_PAGE_SIZE);
-
-  shown.forEach(r => {
-    const tr = document.createElement('tr');
-    const badgeClass = STATUS_BADGE_CLASS[r.status] || 'badge-gray';
-    tr.innerHTML = `
-      <td>${r.district}</td>
-      <td>${r.block}</td>
-      <td style="font-weight: 600; color: #0f172a;">${r.student_name}</td>
-      <td>${r.gender}</td>
-      <td>${r.category}</td>
-      <td>${r.class}</td>
-      <td><span class="badge ${badgeClass}">${r.status}</span></td>
-      <td>${r.remark}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  footer.textContent = filtered.length > RECORD_PAGE_SIZE
-    ? `Showing first ${RECORD_PAGE_SIZE.toLocaleString()} of ${filtered.length.toLocaleString()} matching records — narrow your search to see more.`
-    : `Showing ${filtered.length.toLocaleString()} of ${all.length.toLocaleString()} records.`;
-}
