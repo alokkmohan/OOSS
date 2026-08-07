@@ -1,0 +1,1152 @@
+{
+  "generated_at": "2026-08-07T06:37:54.174820+00:00",
+  "summary": {
+    "total": 40069,
+    "studying": 3581,
+    "not_studying": 15436,
+    "unclear": 20988,
+    "deceased": 64,
+    "studying_pct": 8.9,
+    "not_studying_pct": 38.5,
+    "unclear_pct": 52.4,
+    "deceased_pct": 0.2
+  },
+  "districts": [
+    {
+      "district_name": "HATHRAS",
+      "total": 818,
+      "studying": 0,
+      "not_studying": 0,
+      "unclear": 818,
+      "deceased": 0,
+      "unclear_pct": 100.0,
+      "verification_rate_pct": 0.0
+    },
+    {
+      "district_name": "GB NAGAR",
+      "total": 2051,
+      "studying": 0,
+      "not_studying": 0,
+      "unclear": 2051,
+      "deceased": 0,
+      "unclear_pct": 100.0,
+      "verification_rate_pct": 0.0
+    },
+    {
+      "district_name": "BASTI",
+      "total": 1391,
+      "studying": 0,
+      "not_studying": 0,
+      "unclear": 1391,
+      "deceased": 0,
+      "unclear_pct": 100.0,
+      "verification_rate_pct": 0.0
+    },
+    {
+      "district_name": "SHAHJAHANPUR",
+      "total": 3965,
+      "studying": 0,
+      "not_studying": 0,
+      "unclear": 3965,
+      "deceased": 0,
+      "unclear_pct": 100.0,
+      "verification_rate_pct": 0.0
+    },
+    {
+      "district_name": "Mahoba",
+      "total": 2,
+      "studying": 0,
+      "not_studying": 0,
+      "unclear": 2,
+      "deceased": 0,
+      "unclear_pct": 100.0,
+      "verification_rate_pct": 0.0
+    },
+    {
+      "district_name": "pratapgarh",
+      "total": 1852,
+      "studying": 17,
+      "not_studying": 39,
+      "unclear": 1795,
+      "deceased": 1,
+      "unclear_pct": 96.9,
+      "verification_rate_pct": 3.0
+    },
+    {
+      "district_name": "SANT KABIR NAGAR",
+      "total": 35,
+      "studying": 0,
+      "not_studying": 2,
+      "unclear": 33,
+      "deceased": 0,
+      "unclear_pct": 94.3,
+      "verification_rate_pct": 5.7
+    },
+    {
+      "district_name": "moradabad",
+      "total": 11,
+      "studying": 3,
+      "not_studying": 0,
+      "unclear": 8,
+      "deceased": 0,
+      "unclear_pct": 72.7,
+      "verification_rate_pct": 27.3
+    },
+    {
+      "district_name": "GHAZIPUR",
+      "total": 604,
+      "studying": 94,
+      "not_studying": 77,
+      "unclear": 430,
+      "deceased": 3,
+      "unclear_pct": 71.2,
+      "verification_rate_pct": 28.3
+    },
+    {
+      "district_name": "Ballia",
+      "total": 1200,
+      "studying": 307,
+      "not_studying": 48,
+      "unclear": 845,
+      "deceased": 0,
+      "unclear_pct": 70.4,
+      "verification_rate_pct": 29.6
+    },
+    {
+      "district_name": "KANNAUJ",
+      "total": 39,
+      "studying": 6,
+      "not_studying": 7,
+      "unclear": 26,
+      "deceased": 0,
+      "unclear_pct": 66.7,
+      "verification_rate_pct": 33.3
+    },
+    {
+      "district_name": "RAE BARELI",
+      "total": 1302,
+      "studying": 78,
+      "not_studying": 370,
+      "unclear": 853,
+      "deceased": 1,
+      "unclear_pct": 65.5,
+      "verification_rate_pct": 34.4
+    },
+    {
+      "district_name": "LUCKNOW",
+      "total": 350,
+      "studying": 33,
+      "not_studying": 94,
+      "unclear": 223,
+      "deceased": 0,
+      "unclear_pct": 63.7,
+      "verification_rate_pct": 36.3
+    },
+    {
+      "district_name": "Saharanpur",
+      "total": 2520,
+      "studying": 184,
+      "not_studying": 729,
+      "unclear": 1599,
+      "deceased": 8,
+      "unclear_pct": 63.5,
+      "verification_rate_pct": 36.2
+    },
+    {
+      "district_name": "MEERUT",
+      "total": 112,
+      "studying": 0,
+      "not_studying": 44,
+      "unclear": 67,
+      "deceased": 1,
+      "unclear_pct": 59.8,
+      "verification_rate_pct": 39.3
+    },
+    {
+      "district_name": "AMBEDKAR NAGAR",
+      "total": 1212,
+      "studying": 174,
+      "not_studying": 334,
+      "unclear": 701,
+      "deceased": 3,
+      "unclear_pct": 57.8,
+      "verification_rate_pct": 41.9
+    },
+    {
+      "district_name": "KHERI",
+      "total": 2957,
+      "studying": 81,
+      "not_studying": 1167,
+      "unclear": 1707,
+      "deceased": 2,
+      "unclear_pct": 57.7,
+      "verification_rate_pct": 42.2
+    },
+    {
+      "district_name": "Amroha",
+      "total": 264,
+      "studying": 119,
+      "not_studying": 0,
+      "unclear": 145,
+      "deceased": 0,
+      "unclear_pct": 54.9,
+      "verification_rate_pct": 45.1
+    },
+    {
+      "district_name": "SITAPUR",
+      "total": 1436,
+      "studying": 28,
+      "not_studying": 618,
+      "unclear": 789,
+      "deceased": 1,
+      "unclear_pct": 54.9,
+      "verification_rate_pct": 45.0
+    },
+    {
+      "district_name": "GONDA",
+      "total": 738,
+      "studying": 86,
+      "not_studying": 247,
+      "unclear": 404,
+      "deceased": 1,
+      "unclear_pct": 54.7,
+      "verification_rate_pct": 45.1
+    },
+    {
+      "district_name": "AURAIYA",
+      "total": 461,
+      "studying": 79,
+      "not_studying": 133,
+      "unclear": 249,
+      "deceased": 0,
+      "unclear_pct": 54.0,
+      "verification_rate_pct": 46.0
+    },
+    {
+      "district_name": "VARANASI",
+      "total": 999,
+      "studying": 67,
+      "not_studying": 439,
+      "unclear": 490,
+      "deceased": 3,
+      "unclear_pct": 49.0,
+      "verification_rate_pct": 50.7
+    },
+    {
+      "district_name": "JALAUN",
+      "total": 284,
+      "studying": 63,
+      "not_studying": 82,
+      "unclear": 138,
+      "deceased": 1,
+      "unclear_pct": 48.6,
+      "verification_rate_pct": 51.1
+    },
+    {
+      "district_name": "FATEHPUR",
+      "total": 1027,
+      "studying": 141,
+      "not_studying": 397,
+      "unclear": 486,
+      "deceased": 3,
+      "unclear_pct": 47.3,
+      "verification_rate_pct": 52.4
+    },
+    {
+      "district_name": "JHANSI",
+      "total": 333,
+      "studying": 83,
+      "not_studying": 103,
+      "unclear": 145,
+      "deceased": 2,
+      "unclear_pct": 43.5,
+      "verification_rate_pct": 55.9
+    },
+    {
+      "district_name": "Moradabad",
+      "total": 404,
+      "studying": 99,
+      "not_studying": 126,
+      "unclear": 175,
+      "deceased": 4,
+      "unclear_pct": 43.3,
+      "verification_rate_pct": 55.7
+    },
+    {
+      "district_name": "MORADABAD",
+      "total": 160,
+      "studying": 25,
+      "not_studying": 85,
+      "unclear": 49,
+      "deceased": 1,
+      "unclear_pct": 30.6,
+      "verification_rate_pct": 68.8
+    },
+    {
+      "district_name": "SAMBHAL",
+      "total": 772,
+      "studying": 167,
+      "not_studying": 390,
+      "unclear": 211,
+      "deceased": 4,
+      "unclear_pct": 27.3,
+      "verification_rate_pct": 72.2
+    },
+    {
+      "district_name": "RAMPUR",
+      "total": 972,
+      "studying": 140,
+      "not_studying": 581,
+      "unclear": 249,
+      "deceased": 2,
+      "unclear_pct": 25.6,
+      "verification_rate_pct": 74.2
+    },
+    {
+      "district_name": "Hapur",
+      "total": 125,
+      "studying": 10,
+      "not_studying": 90,
+      "unclear": 24,
+      "deceased": 1,
+      "unclear_pct": 19.2,
+      "verification_rate_pct": 80.0
+    },
+    {
+      "district_name": "JAUNPUR",
+      "total": 668,
+      "studying": 101,
+      "not_studying": 439,
+      "unclear": 126,
+      "deceased": 2,
+      "unclear_pct": 18.9,
+      "verification_rate_pct": 80.8
+    },
+    {
+      "district_name": "PILIBHIT",
+      "total": 875,
+      "studying": 125,
+      "not_studying": 605,
+      "unclear": 141,
+      "deceased": 4,
+      "unclear_pct": 16.1,
+      "verification_rate_pct": 83.4
+    },
+    {
+      "district_name": "Kanpur Dehat",
+      "total": 121,
+      "studying": 81,
+      "not_studying": 24,
+      "unclear": 15,
+      "deceased": 1,
+      "unclear_pct": 12.4,
+      "verification_rate_pct": 86.8
+    },
+    {
+      "district_name": "UNNAO",
+      "total": 721,
+      "studying": 55,
+      "not_studying": 579,
+      "unclear": 86,
+      "deceased": 1,
+      "unclear_pct": 11.9,
+      "verification_rate_pct": 87.9
+    },
+    {
+      "district_name": "Kaushambi",
+      "total": 416,
+      "studying": 173,
+      "not_studying": 196,
+      "unclear": 47,
+      "deceased": 0,
+      "unclear_pct": 11.3,
+      "verification_rate_pct": 88.7
+    },
+    {
+      "district_name": "BAHRAICH",
+      "total": 1378,
+      "studying": 112,
+      "not_studying": 1116,
+      "unclear": 148,
+      "deceased": 2,
+      "unclear_pct": 10.7,
+      "verification_rate_pct": 89.1
+    },
+    {
+      "district_name": "BAGHPAT",
+      "total": 491,
+      "studying": 109,
+      "not_studying": 332,
+      "unclear": 50,
+      "deceased": 0,
+      "unclear_pct": 10.2,
+      "verification_rate_pct": 89.8
+    },
+    {
+      "district_name": "HARDOI",
+      "total": 1400,
+      "studying": 192,
+      "not_studying": 1070,
+      "unclear": 134,
+      "deceased": 4,
+      "unclear_pct": 9.6,
+      "verification_rate_pct": 90.1
+    },
+    {
+      "district_name": "SHRAWASTI",
+      "total": 383,
+      "studying": 95,
+      "not_studying": 251,
+      "unclear": 35,
+      "deceased": 2,
+      "unclear_pct": 9.1,
+      "verification_rate_pct": 90.3
+    },
+    {
+      "district_name": "Chandauli",
+      "total": 380,
+      "studying": 131,
+      "not_studying": 218,
+      "unclear": 31,
+      "deceased": 0,
+      "unclear_pct": 8.2,
+      "verification_rate_pct": 91.8
+    },
+    {
+      "district_name": "MAHOBA",
+      "total": 408,
+      "studying": 97,
+      "not_studying": 285,
+      "unclear": 26,
+      "deceased": 0,
+      "unclear_pct": 6.4,
+      "verification_rate_pct": 93.6
+    },
+    {
+      "district_name": "FARRUKHABAD",
+      "total": 254,
+      "studying": 44,
+      "not_studying": 192,
+      "unclear": 16,
+      "deceased": 2,
+      "unclear_pct": 6.3,
+      "verification_rate_pct": 92.9
+    },
+    {
+      "district_name": "LAKHIMPUR KHERI",
+      "total": 23,
+      "studying": 0,
+      "not_studying": 22,
+      "unclear": 1,
+      "deceased": 0,
+      "unclear_pct": 4.3,
+      "verification_rate_pct": 95.7
+    },
+    {
+      "district_name": "MAINPURI",
+      "total": 881,
+      "studying": 34,
+      "not_studying": 808,
+      "unclear": 37,
+      "deceased": 2,
+      "unclear_pct": 4.2,
+      "verification_rate_pct": 95.6
+    },
+    {
+      "district_name": "BAREILLY",
+      "total": 547,
+      "studying": 40,
+      "not_studying": 486,
+      "unclear": 21,
+      "deceased": 0,
+      "unclear_pct": 3.8,
+      "verification_rate_pct": 96.2
+    },
+    {
+      "district_name": "HAMIRPUR (U.P.)",
+      "total": 376,
+      "studying": 31,
+      "not_studying": 339,
+      "unclear": 6,
+      "deceased": 0,
+      "unclear_pct": 1.6,
+      "verification_rate_pct": 98.4
+    },
+    {
+      "district_name": "Bareilly",
+      "total": 11,
+      "studying": 8,
+      "not_studying": 3,
+      "unclear": 0,
+      "deceased": 0,
+      "unclear_pct": 0.0,
+      "verification_rate_pct": 100.0
+    },
+    {
+      "district_name": "Barabanki",
+      "total": 1292,
+      "studying": 2,
+      "not_studying": 1288,
+      "unclear": 0,
+      "deceased": 2,
+      "unclear_pct": 0.0,
+      "verification_rate_pct": 99.8
+    },
+    {
+      "district_name": "Sonbhadra",
+      "total": 490,
+      "studying": 14,
+      "not_studying": 476,
+      "unclear": 0,
+      "deceased": 0,
+      "unclear_pct": 0.0,
+      "verification_rate_pct": 100.0
+    },
+    {
+      "district_name": "BANDA",
+      "total": 361,
+      "studying": 53,
+      "not_studying": 308,
+      "unclear": 0,
+      "deceased": 0,
+      "unclear_pct": 0.0,
+      "verification_rate_pct": 100.0
+    },
+    {
+      "district_name": "BUDAUN",
+      "total": 197,
+      "studying": 0,
+      "not_studying": 197,
+      "unclear": 0,
+      "deceased": 0,
+      "unclear_pct": 0.0,
+      "verification_rate_pct": 100.0
+    }
+  ],
+  "willingness": {
+    "willing": 14617,
+    "unwilling": 819
+  },
+  "gender_breakdown": {
+    "MALE": {
+      "Studying": 2125,
+      "Not Studying": 8988,
+      "Unclear": 12696,
+      "Deceased": 20
+    },
+    "FEMALE": {
+      "Studying": 1448,
+      "Not Studying": 6426,
+      "Unclear": 8245,
+      "Deceased": 44
+    },
+    "Male": {
+      "Studying": 5,
+      "Not Studying": 4,
+      "Unclear": 16,
+      "Deceased": 0
+    },
+    "Female": {
+      "Studying": 3,
+      "Not Studying": 16,
+      "Unclear": 18,
+      "Deceased": 0
+    },
+    "TRANSGENDER": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "female": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Nil": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 11,
+      "Deceased": 0
+    },
+    "RFEMALE": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "NFEMALE": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    }
+  },
+  "category_breakdown": {
+    "SC": {
+      "Studying": 383,
+      "Not Studying": 1529,
+      "Unclear": 560,
+      "Deceased": 6
+    },
+    "OBC": {
+      "Studying": 732,
+      "Not Studying": 2832,
+      "Unclear": 1096,
+      "Deceased": 18
+    },
+    "Minority": {
+      "Studying": 16,
+      "Not Studying": 82,
+      "Unclear": 17,
+      "Deceased": 0
+    },
+    "General": {
+      "Studying": 26,
+      "Not Studying": 51,
+      "Unclear": 22,
+      "Deceased": 0
+    },
+    "O.B.C": {
+      "Studying": 3,
+      "Not Studying": 7,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "O.B.C.": {
+      "Studying": 2,
+      "Not Studying": 4,
+      "Unclear": 6,
+      "Deceased": 0
+    },
+    "S.C": {
+      "Studying": 1,
+      "Not Studying": 10,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "-": {
+      "Studying": 23,
+      "Not Studying": 46,
+      "Unclear": 1310,
+      "Deceased": 2
+    },
+    "OBC, Minority ority": {
+      "Studying": 1,
+      "Not Studying": 3,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "OBC Minority ority": {
+      "Studying": 1,
+      "Not Studying": 2,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "GENERAL": {
+      "Studying": 54,
+      "Not Studying": 31,
+      "Unclear": 47,
+      "Deceased": 1
+    },
+    "--": {
+      "Studying": 3,
+      "Not Studying": 0,
+      "Unclear": 14,
+      "Deceased": 2
+    },
+    "GEN": {
+      "Studying": 140,
+      "Not Studying": 487,
+      "Unclear": 147,
+      "Deceased": 0
+    },
+    "Unspecified": {
+      "Studying": 1788,
+      "Not Studying": 8026,
+      "Unclear": 13754,
+      "Deceased": 26
+    },
+    "MIN": {
+      "Studying": 56,
+      "Not Studying": 55,
+      "Unclear": 36,
+      "Deceased": 1
+    },
+    "obc": {
+      "Studying": 48,
+      "Not Studying": 503,
+      "Unclear": 120,
+      "Deceased": 2
+    },
+    "gen": {
+      "Studying": 10,
+      "Not Studying": 24,
+      "Unclear": 17,
+      "Deceased": 0
+    },
+    "GN": {
+      "Studying": 80,
+      "Not Studying": 17,
+      "Unclear": 20,
+      "Deceased": 0
+    },
+    "muslim": {
+      "Studying": 1,
+      "Not Studying": 7,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Gen": {
+      "Studying": 6,
+      "Not Studying": 28,
+      "Unclear": 17,
+      "Deceased": 1
+    },
+    "sc": {
+      "Studying": 13,
+      "Not Studying": 167,
+      "Unclear": 68,
+      "Deceased": 1
+    },
+    "MUSLIM": {
+      "Studying": 3,
+      "Not Studying": 14,
+      "Unclear": 3,
+      "Deceased": 0
+    },
+    "MINORITY": {
+      "Studying": 17,
+      "Not Studying": 38,
+      "Unclear": 3,
+      "Deceased": 0
+    },
+    "nill": {
+      "Studying": 1,
+      "Not Studying": 0,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Gen.": {
+      "Studying": 40,
+      "Not Studying": 16,
+      "Unclear": 3,
+      "Deceased": 0
+    },
+    "Sc": {
+      "Studying": 6,
+      "Not Studying": 13,
+      "Unclear": 11,
+      "Deceased": 1
+    },
+    "MINOR": {
+      "Studying": 2,
+      "Not Studying": 0,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "BO": {
+      "Studying": 2,
+      "Not Studying": 20,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Obc": {
+      "Studying": 3,
+      "Not Studying": 30,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "ST": {
+      "Studying": 6,
+      "Not Studying": 146,
+      "Unclear": 6,
+      "Deceased": 0
+    },
+    "8 - Secondary Only": {
+      "Studying": 4,
+      "Not Studying": 63,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "5 - Up. Pr. Secondary and Higher Sec": {
+      "Studying": 84,
+      "Not Studying": 600,
+      "Unclear": 90,
+      "Deceased": 2
+    },
+    "7 - Upper Pr. and Secondary": {
+      "Studying": 8,
+      "Not Studying": 145,
+      "Unclear": 16,
+      "Deceased": 0
+    },
+    "10 - Secondary with Higher Secondary": {
+      "Studying": 8,
+      "Not Studying": 217,
+      "Unclear": 23,
+      "Deceased": 0
+    },
+    "3 - Pr. with Up.Pr. sec. and H.Sec.": {
+      "Studying": 4,
+      "Not Studying": 66,
+      "Unclear": 9,
+      "Deceased": 0
+    },
+    "6 - Pr. Up Pr. and Secondary Only": {
+      "Studying": 4,
+      "Not Studying": 25,
+      "Unclear": 10,
+      "Deceased": 0
+    },
+    "ALP": {
+      "Studying": 2,
+      "Not Studying": 1,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "OBC/Minority": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Minority ority": {
+      "Studying": 0,
+      "Not Studying": 3,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "S.C.": {
+      "Studying": 0,
+      "Not Studying": 2,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Minority /OBC": {
+      "Studying": 0,
+      "Not Studying": 4,
+      "Unclear": 2,
+      "Deceased": 0
+    },
+    "OBC Minority": {
+      "Studying": 0,
+      "Not Studying": 7,
+      "Unclear": 3,
+      "Deceased": 0
+    },
+    "OBC.": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "OBC (Minority ority)": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 3,
+      "Deceased": 0
+    },
+    "OBC(Minority )": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "OBC (Minority )": {
+      "Studying": 0,
+      "Not Studying": 2,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "---": {
+      "Studying": 0,
+      "Not Studying": 2,
+      "Unclear": 12,
+      "Deceased": 0
+    },
+    "JATAV": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "OIBC": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "minority": {
+      "Studying": 0,
+      "Not Studying": 10,
+      "Unclear": 2,
+      "Deceased": 0
+    },
+    "Muslim": {
+      "Studying": 0,
+      "Not Studying": 2,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "general": {
+      "Studying": 0,
+      "Not Studying": 5,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "M": {
+      "Studying": 0,
+      "Not Studying": 8,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "ger": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Ger": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "GENRAL": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 6,
+      "Deceased": 0
+    },
+    "MUSLIM OBC": {
+      "Studying": 0,
+      "Not Studying": 21,
+      "Unclear": 4,
+      "Deceased": 0
+    },
+    "genral": {
+      "Studying": 0,
+      "Not Studying": 3,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "MALE": {
+      "Studying": 0,
+      "Not Studying": 27,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "obc/mino": {
+      "Studying": 0,
+      "Not Studying": 12,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "ob": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "BC": {
+      "Studying": 0,
+      "Not Studying": 2,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "se": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "oBC": {
+      "Studying": 0,
+      "Not Studying": 3,
+      "Unclear": 2,
+      "Deceased": 0
+    },
+    "GEN(min)": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "Min": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 6,
+      "Deceased": 0
+    },
+    "OBc": {
+      "Studying": 0,
+      "Not Studying": 4,
+      "Unclear": 4,
+      "Deceased": 0
+    },
+    "MINRITY": {
+      "Studying": 0,
+      "Not Studying": 1,
+      "Unclear": 0,
+      "Deceased": 0
+    },
+    "UR": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 0,
+      "Deceased": 1
+    },
+    "Muslim,OBC": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "hindu,SC": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "Hindu,SC": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "minority -": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "xxxx": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "xxx": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "NO ADMISSION IN SCHOOL": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "GERNAL": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 2,
+      "Deceased": 0
+    },
+    "min": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 12,
+      "Deceased": 0
+    },
+    "obC": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "1-GENERAL": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 480,
+      "Deceased": 0
+    },
+    "4-OBC": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 940,
+      "Deceased": 0
+    },
+    "2-SC": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 625,
+      "Deceased": 0
+    },
+    "3-ST": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 6,
+      "Deceased": 0
+    },
+    "Nil": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 11,
+      "Deceased": 0
+    },
+    "&": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1391,
+      "Deceased": 0
+    },
+    "O.B.C .": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "O.B.C..": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "OBC (Minority ority )": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 6,
+      "Deceased": 0
+    },
+    "General (Minority ority)": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 14,
+      "Deceased": 0
+    },
+    "Gen (Minority ority)": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "Minority ority OBC": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "Not Found": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 5,
+      "Deceased": 0
+    },
+    "No": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 1,
+      "Deceased": 0
+    },
+    "UN General": {
+      "Studying": 0,
+      "Not Studying": 0,
+      "Unclear": 9,
+      "Deceased": 0
+    }
+  }
+}

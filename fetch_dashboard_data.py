@@ -152,7 +152,7 @@ def load_rows(sheet_id: str, creds_file: Path) -> list[dict]:
     return rows
 
 
-def build_dashboard_data(rows: list[dict]) -> dict:
+def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict:
     total = len(rows)
     n_studying = sum(1 for r in rows if r["_bucket"] == "Studying")
     n_not_studying = sum(1 for r in rows if r["_bucket"] == "Not Studying")
@@ -212,37 +212,39 @@ def build_dashboard_data(rows: list[dict]) -> dict:
     gender_breakdown = crosstab("Gender")
     category_breakdown = crosstab("Category", default="Unspecified")
 
-    # --- Row-level records for the searchable table -------------------
-    # Address / Mobile No. are deliberately left out of this export to
-    # limit PII exposure in a file that lives on disk / gets shared around;
-    # add them back here if the table view needs to show them.
-    def s(r, col):
-        return str(r.get(col) or "").strip()
-
-    records = [{
-        "district": s(r, "District Name"),
-        "block": s(r, "Block Name"),
-        "student_name": s(r, "Student Name"),
-        "father_name": s(r, "Father Name"),
-        "gender": s(r, "Gender"),
-        "category": s(r, "Category"),
-        "class": s(r, "Class"),
-        "dropout_year": s(r, "Droupout Year"),
-        "current_status": s(r, "current Status"),
-        "remark": s(r, "Remark"),
-        "status": r["_bucket"],
-        "willingness": r["_willingness"],
-    } for r in rows]
-
-    return {
+    result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": summary,
         "districts": district_list,
         "willingness": willingness,
         "gender_breakdown": gender_breakdown,
         "category_breakdown": category_breakdown,
-        "records": records,
     }
+
+    if include_records:
+        # Row-level records for the searchable table. Address / Mobile No.
+        # are deliberately left out even here to limit PII exposure; this
+        # whole block is skipped entirely for --public output (see main()) —
+        # student/father names have no business in a public repo.
+        def s(r, col):
+            return str(r.get(col) or "").strip()
+
+        result["records"] = [{
+            "district": s(r, "District Name"),
+            "block": s(r, "Block Name"),
+            "student_name": s(r, "Student Name"),
+            "father_name": s(r, "Father Name"),
+            "gender": s(r, "Gender"),
+            "category": s(r, "Category"),
+            "class": s(r, "Class"),
+            "dropout_year": s(r, "Droupout Year"),
+            "current_status": s(r, "current Status"),
+            "remark": s(r, "Remark"),
+            "status": r["_bucket"],
+            "willingness": r["_willingness"],
+        } for r in rows]
+
+    return result
 
 
 def main():
@@ -250,6 +252,11 @@ def main():
     parser.add_argument("--sheet-id", default=DEFAULT_SHEET_ID, help="Google Sheet ID (from the URL)")
     parser.add_argument("--creds", type=Path, default=DEFAULT_CREDS_FILE, help="Path to service account JSON key")
     parser.add_argument("-o", "--output", type=Path, default=SCRIPT_DIR / "dashboard_data.json")
+    parser.add_argument("--public", action="store_true",
+                         help="Omit row-level student/father names entirely — use this for "
+                              "the file you intend to commit/publish (e.g. GitHub Pages). "
+                              "The default (no flag) includes names, for local-only viewing; "
+                              "that file must stay gitignored.")
     args = parser.parse_args()
 
     if not args.creds.exists():
@@ -262,11 +269,12 @@ def main():
     rows = load_rows(args.sheet_id, args.creds)
     print(f"  {len(rows):,} total rows loaded.")
 
-    print("Building dashboard_data.json ...")
-    data = build_dashboard_data(rows)
+    print("Building dashboard data ...")
+    data = build_dashboard_data(rows, include_records=not args.public)
 
     args.output.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Wrote {args.output} ({len(rows):,} records, {len(data['districts'])} districts).")
+    mode = "public (no student/father names)" if args.public else "local (includes names)"
+    print(f"Wrote {args.output} [{mode}] ({len(rows):,} rows, {len(data['districts'])} districts).")
 
 
 if __name__ == "__main__":

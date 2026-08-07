@@ -97,7 +97,7 @@ function renderStatusChart() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+        legend: { position: 'bottom', labels: { color: '#475569' } }
       },
       cutout: '70%'
     }
@@ -124,7 +124,7 @@ function renderWillingnessChart() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+        legend: { position: 'bottom', labels: { color: '#475569' } }
       },
       cutout: '70%'
     }
@@ -155,11 +155,11 @@ function renderCategoryChart() {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { display: false } },
-        y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        x: { stacked: true, ticks: { color: '#475569' }, grid: { display: false } },
+        y: { stacked: true, ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.08)' } }
       },
       plugins: {
-        legend: { labels: { color: '#94a3b8' } }
+        legend: { labels: { color: '#475569' } }
       }
     }
   });
@@ -201,11 +201,11 @@ function renderDistrictChart() {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { display: false } }
+        x: { stacked: true, ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.08)' } },
+        y: { stacked: true, ticks: { color: '#475569' }, grid: { display: false } }
       },
       plugins: {
-        legend: { labels: { color: '#94a3b8' } }
+        legend: { labels: { color: '#475569' } }
       }
     }
   });
@@ -233,11 +233,11 @@ function renderGenderChart() {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
-        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        x: { ticks: { color: '#475569' }, grid: { display: false } },
+        y: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.08)' } }
       },
       plugins: {
-        legend: { labels: { color: '#94a3b8' } }
+        legend: { labels: { color: '#475569' } }
       }
     }
   });
@@ -279,6 +279,13 @@ const STATUS_BADGE_CLASS = {
 };
 
 function renderRecordTable(filterTerm = '') {
+  const section = document.getElementById('record-table-section');
+  if (!dashboardData.records) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+
   const tbody = document.getElementById('table-record-body');
   const footer = document.getElementById('record-table-footer');
   tbody.innerHTML = '';
