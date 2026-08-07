@@ -258,7 +258,7 @@ function renderDistrictTable(filterTerm = '') {
     const tr = document.createElement('tr');
     const rate = d.verification_rate_pct || 0;
     tr.innerHTML = `
-      <td style="font-weight: 600; color: #fff;">${d.district_name}</td>
+      <td style="font-weight: 600;">${d.district_name}</td>
       <td>${d.total.toLocaleString()}</td>
       <td><span class="badge badge-green">${(d.studying || 0).toLocaleString()}</span></td>
       <td><span class="badge badge-orange">${(d.not_studying || 0).toLocaleString()}</span></td>
@@ -313,7 +313,7 @@ function renderRecordTable(filterTerm = '') {
     tr.innerHTML = `
       <td>${r.district}</td>
       <td>${r.block}</td>
-      <td style="font-weight: 600; color: #fff;">${r.student_name}</td>
+      <td style="font-weight: 600;">${r.student_name}</td>
       <td>${r.gender}</td>
       <td>${r.category}</td>
       <td>${r.class}</td>
