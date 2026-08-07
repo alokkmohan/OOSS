@@ -151,6 +151,32 @@ def write_tables(ws, data):
         row(c, counts["Studying"], counts["Not Studying"], counts["Unclear"], counts["Deceased"])
     row()
 
+    class_header_row = len(data_rows) + 2
+    row("CLASS-WISE STATUS (Class 6-12)")
+    row("Class", "Studying", "Not Studying", "Unclear", "Death Cases")
+    class_items = sorted(data["class_breakdown"].items())
+    for cls, counts in class_items:
+        row(str(cls), counts["Studying"], counts["Not Studying"], counts["Unclear"], counts["Deceased"])
+    row()
+
+    # Top & bottom 5 districts by verification rate — only districts that
+    # actually reported (total > 0); a non-reporting district's 0% isn't a
+    # "low verification" result, it's a missing-data result, tracked instead
+    # by the Districts Reporting KPI.
+    reporting = [d for d in data["districts"] if d["total"] > 0]
+    ranked = sorted(reporting, key=lambda d: d["verification_rate_pct"], reverse=True)
+    top5 = ranked[:5]
+    bottom5 = list(reversed(ranked[-5:])) if len(ranked) > 5 else []
+
+    district_verif_header_row = len(data_rows) + 2
+    row("TOP & BOTTOM 5 DISTRICTS BY VERIFICATION RATE")
+    row("District", "Verification Rate %", "Group")
+    for d in top5:
+        row(d["district_name"], d["verification_rate_pct"], "Top 5")
+    for d in bottom5:
+        row(d["district_name"], d["verification_rate_pct"], "Bottom 5")
+    row()
+
     ws.update(data_rows, f"{DATA_COL_LETTER}1")
 
     formats = []
@@ -209,6 +235,11 @@ def write_tables(ws, data):
         "gender_row_count": len(gender_items),
         "category_header_row": category_header_row,
         "category_row_count": len(category_items),
+        "class_header_row": class_header_row,
+        "class_row_count": len(class_items),
+        "district_verif_header_row": district_verif_header_row,
+        "top5_count": len(top5),
+        "bottom5_count": len(bottom5),
     }
 
 
@@ -367,6 +398,60 @@ def build_chart_requests(sheet_id, layout):
                 },
             },
             "position": pos(whdr + 81),
+        }}})
+
+    # --- Class-wise (6-12) stacked column chart ---------------------------
+    clhdr = layout["class_header_row"] + 1
+    clrows = layout["class_row_count"]
+    if clrows:
+        requests.append({"addChart": {"chart": {
+            "spec": {
+                "title": "Status by Class (6-12)",
+                "hiddenDimensionStrategy": "SHOW_ALL",
+                "basicChart": {
+                    "chartType": "COLUMN",
+                    "stackedType": "STACKED",
+                    "legendPosition": "BOTTOM_LEGEND",
+                    "domains": [{"domain": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": clhdr - 1,
+                        "endRowIndex": clhdr + clrows,
+                        "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 1}]}}}],
+                    "series": [{"series": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": clhdr - 1,
+                        "endRowIndex": clhdr + clrows,
+                        "startColumnIndex": DATA_COL_OFFSET + c, "endColumnIndex": DATA_COL_OFFSET + c + 1}]}},
+                        "targetAxis": "LEFT_AXIS"} for c in (1, 2, 3, 4)],
+                    "headerCount": 1,
+                },
+            },
+            "position": pos(whdr + 103),
+        }}})
+
+    # --- Top & bottom 5 districts by verification rate horizontal bar ------
+    dvhdr = layout["district_verif_header_row"] + 1
+    dvrows = layout["top5_count"] + layout["bottom5_count"]
+    if dvrows:
+        requests.append({"addChart": {"chart": {
+            "spec": {
+                "title": "Top & Bottom 5 Districts by Verification Rate",
+                "hiddenDimensionStrategy": "SHOW_ALL",
+                "basicChart": {
+                    "chartType": "BAR",
+                    "legendPosition": "NO_LEGEND",
+                    "domains": [{"domain": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": dvhdr - 1,
+                        "endRowIndex": dvhdr + dvrows,
+                        "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 1}]}}}],
+                    "series": [{"series": {"sourceRange": {"sources": [{
+                        "sheetId": sheet_id, "startRowIndex": dvhdr - 1,
+                        "endRowIndex": dvhdr + dvrows,
+                        "startColumnIndex": DATA_COL_OFFSET + 1, "endColumnIndex": DATA_COL_OFFSET + 2}]}},
+                        "targetAxis": "BOTTOM_AXIS",
+                        "color": {"red": 0.05, "green": 0.65, "blue": 0.91}}],
+                    "headerCount": 1,
+                },
+            },
+            "position": pos(whdr + 125, height_px=340),
         }}})
 
     return requests

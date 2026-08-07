@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-07T09:01:30.475831+00:00",
+  "generated_at": "2026-08-07T11:19:17.205610+00:00",
   "summary": {
     "total": 40069,
     "studying": 3632,
@@ -582,5 +582,49 @@
       "label": "Other",
       "count": 26542
     }
-  ]
+  ],
+  "class_breakdown": {
+    "10": {
+      "Studying": 1907,
+      "Not Studying": 8385,
+      "Unclear": 10778,
+      "Deceased": 26
+    },
+    "11": {
+      "Studying": 885,
+      "Not Studying": 3003,
+      "Unclear": 4343,
+      "Deceased": 18
+    },
+    "9": {
+      "Studying": 805,
+      "Not Studying": 3885,
+      "Unclear": 5247,
+      "Deceased": 20
+    },
+    "12": {
+      "Studying": 27,
+      "Not Studying": 71,
+      "Unclear": 5,
+      "Deceased": 0
+    },
+    "7": {
+      "Studying": 1,
+      "Not Studying": 17,
+      "Unclear": 157,
+      "Deceased": 0
+    },
+    "8": {
+      "Studying": 3,
+      "Not Studying": 30,
+      "Unclear": 246,
+      "Deceased": 0
+    },
+    "6": {
+      "Studying": 0,
+      "Not Studying": 13,
+      "Unclear": 116,
+      "Deceased": 0
+    }
+  }
 }

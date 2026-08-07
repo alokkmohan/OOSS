@@ -434,6 +434,9 @@ def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict
     # actual category, or are blank) are dropped rather than shown as a
     # misleading 6th "Unspecified" bucket.
     category_breakdown = crosstab("Category", value_fn=normalize_category, skip_values=("Unspecified",))
+    # Class 6-12 only, per this survey's scope — junk/out-of-range values
+    # (see normalize_class) are dropped rather than shown as a bucket.
+    class_breakdown = crosstab("Class", value_fn=normalize_class, skip_values=(None,))
 
     result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -443,6 +446,7 @@ def build_dashboard_data(rows: list[dict], include_records: bool = True) -> dict
         "gender_breakdown": gender_breakdown,
         "category_breakdown": category_breakdown,
         "reason_breakdown": reason_breakdown,
+        "class_breakdown": class_breakdown,
     }
 
     if include_records:
