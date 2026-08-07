@@ -248,6 +248,7 @@ def build_chart_requests(sheet_id, layout):
     requests.append({"addChart": {"chart": {
         "spec": {
             "title": "Status Breakdown",
+            "hiddenDimensionStrategy": "SHOW_ALL",
             "pieChart": {
                 "legendPosition": "RIGHT_LEGEND",
                 # columns 1-4 = Studying/Not Studying/Unclear/Deceased; column 0
@@ -269,6 +270,7 @@ def build_chart_requests(sheet_id, layout):
     requests.append({"addChart": {"chart": {
         "spec": {
             "title": "Willing / Unwilling / Unclear",
+            "hiddenDimensionStrategy": "SHOW_ALL",
             "pieChart": {
                 "legendPosition": "RIGHT_LEGEND",
                 "domain": {"sourceRange": {"sources": [{
@@ -289,6 +291,7 @@ def build_chart_requests(sheet_id, layout):
         requests.append({"addChart": {"chart": {
             "spec": {
                 "title": "Reason-wise Breakup — Not Studying & Unclear Cases",
+                "hiddenDimensionStrategy": "SHOW_ALL",
                 "basicChart": {
                     "chartType": "BAR",
                     "legendPosition": "NO_LEGEND",
@@ -314,6 +317,7 @@ def build_chart_requests(sheet_id, layout):
         requests.append({"addChart": {"chart": {
             "spec": {
                 "title": "Status by Gender",
+                "hiddenDimensionStrategy": "SHOW_ALL",
                 "basicChart": {
                     "chartType": "COLUMN",
                     "stackedType": "STACKED",
@@ -333,6 +337,7 @@ def build_chart_requests(sheet_id, layout):
         requests.append({"addChart": {"chart": {
             "spec": {
                 "title": "Status by Social Category",
+                "hiddenDimensionStrategy": "SHOW_ALL",
                 "basicChart": {
                     "chartType": "COLUMN",
                     "stackedType": "STACKED",
