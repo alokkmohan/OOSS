@@ -274,7 +274,16 @@ def read_tab(sh, title):
     except gspread.exceptions.WorksheetNotFound:
         print(f"  (tab '{title}' not found, skipping)")
         return []
-    return ws.get_all_records()
+    # Some tabs have a title row above the real header ("Known - Studying"
+    # in A1, actual "District Name, Block Name, ..." header in row 2) —
+    # find whichever of the first few rows is the real header instead of
+    # assuming row 1.
+    header_row = 1
+    for candidate in (1, 2, 3):
+        if "District Name" in ws.row_values(candidate):
+            header_row = candidate
+            break
+    return ws.get_all_records(head=header_row)
 
 
 def load_rows(sheet_id: str, creds_file: Path) -> list[dict]:
