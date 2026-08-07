@@ -124,6 +124,8 @@ def build_district_breakup_rows(rows: list[dict]) -> list[list]:
 def build_reason_analysis_rows(rows: list[dict]) -> list[list]:
     counts = {(name, applies): 0 for name, applies in REASON_ROWS_SPEC}
     denom = sum(1 for r in rows if r["_bucket"] in ("Not Studying", "Unclear", "Deceased"))
+    studying_count = sum(1 for r in rows if r["_bucket"] == "Studying")
+    grand_total = denom + studying_count
     for r in rows:
         reason = detect_reason_detailed(r["_bucket"], str(r.get("current Status") or ""), str(r.get("Remark") or ""))
         if reason is None:
@@ -139,7 +141,14 @@ def build_reason_analysis_rows(rows: list[dict]) -> list[list]:
         total_count += n
         pct = round(n / denom * 100, 1) if denom else 0.0
         out.append([name, applies, n, f"{pct}%"])
-    out.append(["TOTAL", "", total_count, f"{round(total_count / denom * 100, 1) if denom else 0.0}%"])
+    out.append(["TOTAL (Not Studying + Unclear)", "", total_count, f"{round(total_count / denom * 100, 1) if denom else 0.0}%"])
+    # Reconciles the table to the full record count — Known - Studying rows
+    # don't have a "reason" (nothing to explain), so they're outside the
+    # Not-Studying+Unclear denominator above; this row accounts for them so
+    # the sheet totals to all 40k+ records, not just the ones with a reason.
+    out.append(["Known - Studying (no reason applicable)", "Studying", studying_count,
+                f"{round(studying_count / grand_total * 100, 1) if grand_total else 0.0}% of all records"])
+    out.append(["TOTAL (All Records)", "", grand_total, "100.0%"])
     return out
 
 
@@ -160,19 +169,28 @@ def style_district_breakup(ws, n_rows):
     ws.freeze(rows=1)
 
 
-def style_reason_analysis(ws, n_rows, not_studying_count):
-    ws.format("A1:D1", {
-        "backgroundColor": {"red": 0.11, "green": 0.22, "blue": 0.40},
-        "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}},
-    })
-    # Not-Studying-side rows: rows 2..(1+not_studying_count)
-    ws.format(f"A2:D{1 + not_studying_count}", {"backgroundColor": {"red": 0.99, "green": 0.90, "blue": 0.78}})
-    # Unclear-side rows: next block up to the TOTAL row (exclusive)
-    ws.format(f"A{2 + not_studying_count}:D{n_rows}", {"backgroundColor": {"red": 0.85, "green": 0.92, "blue": 0.98}})
-    ws.format(f"A{n_rows + 1}:D{n_rows + 1}", {
-        "backgroundColor": {"red": 0.11, "green": 0.22, "blue": 0.40},
-        "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}},
-    })
+def style_reason_analysis(ws, not_studying_count, unclear_count):
+    dark_navy = {"backgroundColor": {"red": 0.11, "green": 0.22, "blue": 0.40},
+                 "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}}}
+    ws.format("A1:D1", dark_navy)
+
+    not_studying_start = 2
+    not_studying_end = not_studying_start + not_studying_count - 1
+    ws.format(f"A{not_studying_start}:D{not_studying_end}", {"backgroundColor": {"red": 0.99, "green": 0.90, "blue": 0.78}})
+
+    unclear_start = not_studying_end + 1
+    unclear_end = unclear_start + unclear_count - 1
+    ws.format(f"A{unclear_start}:D{unclear_end}", {"backgroundColor": {"red": 0.85, "green": 0.92, "blue": 0.98}})
+
+    subtotal_row = unclear_end + 1
+    ws.format(f"A{subtotal_row}:D{subtotal_row}", dark_navy)
+
+    studying_row = subtotal_row + 1
+    ws.format(f"A{studying_row}:D{studying_row}", {"backgroundColor": {"red": 0.85, "green": 0.96, "blue": 0.85}})
+
+    grand_total_row = studying_row + 1
+    ws.format(f"A{grand_total_row}:D{grand_total_row}", dark_navy)
+
     ws.freeze(rows=1)
 
 
@@ -203,10 +221,11 @@ def main():
     print("Building Reason-wise Analysis ...")
     reason_table = build_reason_analysis_rows(rows)
     not_studying_count = len(NOT_STUDYING_REASON_PATTERNS) + 2  # + Death + Other
+    unclear_count = len(UNCLEAR_REASON_PATTERNS) + 2  # + Yet to be Contacted + Other
     ws2 = get_or_replace_ws(sh, REASON_ANALYSIS_TAB, rows=len(reason_table) + 5, cols=4, index=1)
     ws2.update(reason_table, "A1")
-    style_reason_analysis(ws2, len(reason_table) - 1, not_studying_count)
-    print(f"  {len(reason_table) - 2} reason categories + TOTAL row.")
+    style_reason_analysis(ws2, not_studying_count, unclear_count)
+    print(f"  {not_studying_count + unclear_count} reason categories + Studying reconciliation + TOTAL rows.")
 
     print("Done.")
 
