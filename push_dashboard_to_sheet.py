@@ -75,27 +75,44 @@ def delete_existing_charts(sh, ws):
         sh.batch_update({"requests": requests})
 
 
+DATA_COL_OFFSET = 13  # hidden helper data starts at column N (0-indexed 13)
+DATA_COL_LETTER = "N"
+
+
 def write_tables(ws, data):
-    rows_out = []
+    # --- Visible part: title + KPI banner only (columns A-E), matching the
+    # web dashboard's look. Everything charts need is written to a hidden
+    # column block instead of as visible tables (see build_chart_requests /
+    # hide_data_columns) — this tab should read as charts-only, like
+    # https://ooss.dataimpact.in/, not a data dump.
+    visible_rows = []
 
-    def row(*vals):
-        rows_out.append(list(vals))
+    def vrow(*vals):
+        visible_rows.append(list(vals))
 
-    row("Out-of-School Student Status Dashboard")
-    row(f"Last updated: {data['generated_at']}")
-    row()
+    vrow("Out-of-School Student Status Dashboard")
+    vrow(f"Last updated: {data['generated_at']}")
+    vrow()
 
     s = data["summary"]
 
-    # --- KPI banner (colored cards, headline numbers at a glance) --------
-    kpi_header_row = len(rows_out) + 1
-    row(*(label for label, _, _ in KPI_CARDS))
-    kpi_value_row = len(rows_out) + 1
-    row(s["total"], s["studying"], s["not_studying"], s["unclear"],
-        f"{len(data['districts'])}/{DISTRICT_TARGET}")
-    row()
+    kpi_header_row = len(visible_rows) + 1
+    vrow(*(label for label, _, _ in KPI_CARDS))
+    kpi_value_row = len(visible_rows) + 1
+    vrow(s["total"], s["studying"], s["not_studying"], s["unclear"],
+         f"{len(data['districts'])}/{DISTRICT_TARGET}")
 
-    summary_header_row = len(rows_out) + 2  # 1-indexed row of the header line below
+    ws.update(visible_rows, "A1")
+    ws.format("A1", {"textFormat": {"bold": True, "fontSize": 14}})
+    ws.format("A2", {"textFormat": {"italic": True}})
+
+    # --- Hidden part: the small per-chart source tables ------------------
+    data_rows = []
+
+    def row(*vals):
+        data_rows.append(list(vals))
+
+    summary_header_row = len(data_rows) + 2  # 1-indexed row of the header line below
     row("SUMMARY")
     row("Total", "Studying", "Not Studying", "Unclear", "Deceased")
     row(s["total"], s["studying"], s["not_studying"], s["unclear"], s["deceased"])
@@ -104,13 +121,13 @@ def write_tables(ws, data):
     row()
 
     w = data["willingness"]
-    willing_header_row = len(rows_out) + 2
+    willing_header_row = len(data_rows) + 2
     row("WILLING / UNWILLING / UNCLEAR")
     row("Willing (Economic/External/Unspecified)", "Unwilling", "Unclear")
     row(w["willing"], w["unwilling"], s["unclear"])
     row()
 
-    reason_header_row = len(rows_out) + 2
+    reason_header_row = len(data_rows) + 2
     row("REASON-WISE BREAKUP — NOT STUDYING & UNCLEAR CASES")
     row("Reason", "No. of Students")
     reason_items = data["reason_breakdown"]
@@ -118,7 +135,7 @@ def write_tables(ws, data):
         row(item["label"], item["count"])
     row()
 
-    gender_header_row = len(rows_out) + 2
+    gender_header_row = len(data_rows) + 2
     row("GENDER x STATUS")
     row("Gender", "Studying", "Not Studying", "Unclear", "Deceased")
     gender_items = sorted(data["gender_breakdown"].items())
@@ -126,7 +143,7 @@ def write_tables(ws, data):
         row(g, counts["Studying"], counts["Not Studying"], counts["Unclear"], counts["Deceased"])
     row()
 
-    category_header_row = len(rows_out) + 2
+    category_header_row = len(data_rows) + 2
     row("SOCIAL CATEGORY x STATUS")
     row("Category", "Studying", "Not Studying", "Unclear", "Deceased")
     category_items = sorted(data["category_breakdown"].items())
@@ -134,9 +151,7 @@ def write_tables(ws, data):
         row(c, counts["Studying"], counts["Not Studying"], counts["Unclear"], counts["Deceased"])
     row()
 
-    ws.update(rows_out, "A1")
-    ws.format("A1", {"textFormat": {"bold": True, "fontSize": 14}})
-    ws.format("A2", {"textFormat": {"italic": True}})
+    ws.update(data_rows, f"{DATA_COL_LETTER}1")
 
     formats = []
     for i, (label, header_bg, value_fg) in enumerate(KPI_CARDS):
@@ -171,6 +186,17 @@ def write_tables(ws, data):
         }
     }]})
     ws.columns_auto_resize(0, 8)
+
+    # Hide the helper data block (columns N onward) — charts still read from
+    # it, but it shouldn't show up as a visible table on the tab.
+    ws.spreadsheet.batch_update({"requests": [{
+        "updateDimensionProperties": {
+            "range": {"sheetId": ws.id, "dimension": "COLUMNS",
+                       "startIndex": DATA_COL_OFFSET, "endIndex": DATA_COL_OFFSET + 8},
+            "properties": {"hiddenByUser": True},
+            "fields": "hiddenByUser",
+        }
+    }]})
 
     return {
         "kpi_header_row": kpi_header_row,
@@ -208,12 +234,12 @@ def build_chart_requests(sheet_id, layout):
     def domain(row, start_col, end_col):
         return {"domain": {"sourceRange": {"sources": [{
             "sheetId": sheet_id, "startRowIndex": row - 1, "endRowIndex": row,
-            "startColumnIndex": start_col, "endColumnIndex": end_col}]}}}
+            "startColumnIndex": DATA_COL_OFFSET + start_col, "endColumnIndex": DATA_COL_OFFSET + end_col}]}}}
 
     def series(row, start_col, end_col):
         return {"series": {"sourceRange": {"sources": [{
             "sheetId": sheet_id, "startRowIndex": row - 1, "endRowIndex": row,
-            "startColumnIndex": start_col, "endColumnIndex": end_col}]}},
+            "startColumnIndex": DATA_COL_OFFSET + start_col, "endColumnIndex": DATA_COL_OFFSET + end_col}]}},
             "targetAxis": "LEFT_AXIS"}
 
     # --- Status breakdown pie chart -----------------------------------
@@ -228,10 +254,10 @@ def build_chart_requests(sheet_id, layout):
                 # (Total) is deliberately excluded, it's the sum of the rest.
                 "domain": {"sourceRange": {"sources": [{
                     "sheetId": sheet_id, "startRowIndex": hdr - 1, "endRowIndex": hdr,
-                    "startColumnIndex": 1, "endColumnIndex": 5}]}},
+                    "startColumnIndex": DATA_COL_OFFSET + 1, "endColumnIndex": DATA_COL_OFFSET + 5}]}},
                 "series": {"sourceRange": {"sources": [{
                     "sheetId": sheet_id, "startRowIndex": val - 1, "endRowIndex": val,
-                    "startColumnIndex": 1, "endColumnIndex": 5}]}},
+                    "startColumnIndex": DATA_COL_OFFSET + 1, "endColumnIndex": DATA_COL_OFFSET + 5}]}},
             },
         },
         "position": pos(hdr - 2),
@@ -247,10 +273,10 @@ def build_chart_requests(sheet_id, layout):
                 "legendPosition": "RIGHT_LEGEND",
                 "domain": {"sourceRange": {"sources": [{
                     "sheetId": sheet_id, "startRowIndex": whdr - 1, "endRowIndex": whdr,
-                    "startColumnIndex": 0, "endColumnIndex": 3}]}},
+                    "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 3}]}},
                 "series": {"sourceRange": {"sources": [{
                     "sheetId": sheet_id, "startRowIndex": wval - 1, "endRowIndex": wval,
-                    "startColumnIndex": 0, "endColumnIndex": 3}]}},
+                    "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 3}]}},
             },
         },
         "position": pos(whdr + 17),
@@ -269,11 +295,11 @@ def build_chart_requests(sheet_id, layout):
                     "domains": [{"domain": {"sourceRange": {"sources": [{
                         "sheetId": sheet_id, "startRowIndex": rhdr - 1,
                         "endRowIndex": rhdr + rrows,
-                        "startColumnIndex": 0, "endColumnIndex": 1}]}}}],
+                        "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 1}]}}}],
                     "series": [{"series": {"sourceRange": {"sources": [{
                         "sheetId": sheet_id, "startRowIndex": rhdr - 1,
                         "endRowIndex": rhdr + rrows,
-                        "startColumnIndex": 1, "endColumnIndex": 2}]}},
+                        "startColumnIndex": DATA_COL_OFFSET + 1, "endColumnIndex": DATA_COL_OFFSET + 2}]}},
                         "targetAxis": "BOTTOM_AXIS"}],
                     "headerCount": 1,
                 },
@@ -314,11 +340,11 @@ def build_chart_requests(sheet_id, layout):
                     "domains": [{"domain": {"sourceRange": {"sources": [{
                         "sheetId": sheet_id, "startRowIndex": chdr - 1,
                         "endRowIndex": chdr + crows,
-                        "startColumnIndex": 0, "endColumnIndex": 1}]}}}],
+                        "startColumnIndex": DATA_COL_OFFSET, "endColumnIndex": DATA_COL_OFFSET + 1}]}}}],
                     "series": [{"series": {"sourceRange": {"sources": [{
                         "sheetId": sheet_id, "startRowIndex": chdr - 1,
                         "endRowIndex": chdr + crows,
-                        "startColumnIndex": c, "endColumnIndex": c + 1}]}},
+                        "startColumnIndex": DATA_COL_OFFSET + c, "endColumnIndex": DATA_COL_OFFSET + c + 1}]}},
                         "targetAxis": "LEFT_AXIS"} for c in (1, 2, 3, 4)],
                     "headerCount": 1,
                 },
