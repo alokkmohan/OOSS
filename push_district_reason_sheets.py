@@ -39,12 +39,14 @@ from fetch_dashboard_data import (
     MASTER_DISTRICTS,
     load_rows,
     normalize_category,
+    normalize_class,
     normalize_district,
     normalize_gender,
 )
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 DISTRICT_BREAKUP_TAB = "District-wise Breakup"
+CLASS_ANALYSIS_TAB = "Class-wise Analysis"
 REASON_ANALYSIS_TAB = "Reason-wise Analysis"
 
 NOT_STUDYING_REASON_PATTERNS = [
@@ -182,6 +184,38 @@ def build_status_breakup_block(rows: list[dict], normalizer, field: str, group_c
     return block
 
 
+def build_class_analysis_rows(rows: list[dict]) -> list[list]:
+    stats = {c: {"Studying": 0, "Not Studying": 0, "Unclear": 0, "Deceased": 0} for c in range(6, 13)}
+    grand_total = 0
+    for r in rows:
+        c = normalize_class(r.get("Class"))
+        if c is not None:
+            stats[c][r["_bucket"]] += 1
+            grand_total += 1
+
+    headers = ["Class", "Known - Studying", "Known - Not Studying / Dropout", "Unclear", "Death Case",
+               "Total", "% of All Records"]
+    out = [headers]
+    totals = [0, 0, 0, 0, 0]
+    for c in range(6, 13):
+        s = stats[c]
+        row_total = s["Studying"] + s["Not Studying"] + s["Unclear"] + s["Deceased"]
+        vals = [s["Studying"], s["Not Studying"], s["Unclear"], s["Deceased"], row_total]
+        pct = round(row_total / grand_total * 100, 1) if grand_total else 0.0
+        out.append([c] + vals + [f"{pct}%"])
+        totals = [t + v for t, v in zip(totals, vals)]
+    out.append(["TOTAL"] + totals + [""])
+    return out
+
+
+def style_class_analysis(ws, n_class_rows):
+    dark_navy = {"backgroundColor": {"red": 0.11, "green": 0.22, "blue": 0.40},
+                 "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}}}
+    ws.format("A1:G1", {**dark_navy, "wrapStrategy": "WRAP"})
+    ws.format(f"A{2 + n_class_rows}:G{2 + n_class_rows}", dark_navy)
+    ws.freeze(rows=1)
+
+
 def get_or_replace_ws(sh, title, rows, cols, index=None):
     try:
         ws = sh.worksheet(title)
@@ -291,6 +325,12 @@ def main():
 
     print(f"  {not_studying_count + unclear_count} reason categories + Studying reconciliation + TOTAL rows.")
     print("  Added Gender-wise and Social Category-wise breakup blocks.")
+
+    print("Building Class-wise Analysis (Class 6-12) ...")
+    class_table = build_class_analysis_rows(rows)
+    ws3 = get_or_replace_ws(sh, CLASS_ANALYSIS_TAB, rows=len(class_table) + 5, cols=7, index=2)
+    ws3.update(class_table, "A1")
+    style_class_analysis(ws3, len(class_table) - 2)
 
     print("Done.")
 

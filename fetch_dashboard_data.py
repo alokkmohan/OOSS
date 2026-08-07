@@ -126,6 +126,29 @@ def normalize_district(raw: str) -> str:
         return s
     return s
 
+
+# Class is a mix of plain numbers, "10th"-style suffixes, and Roman
+# numerals — normalize to an int, or None if it's junk ("Nil", "Duplicate
+# PEN No", blank) or outside the 6-12 range this survey targets.
+_ROMAN_CLASS_MAP = {
+    "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7,
+    "VIII": 8, "IX": 9, "X": 10, "XI": 11, "XII": 12,
+}
+
+
+def normalize_class(raw: str) -> int | None:
+    s = str(raw or "").strip().upper()
+    if not s:
+        return None
+    s_num = re.sub(r"(ST|ND|RD|TH)$", "", s)
+    n = None
+    if s_num.isdigit():
+        n = int(s_num)
+    elif s in _ROMAN_CLASS_MAP:
+        n = _ROMAN_CLASS_MAP[s]
+    return n if n is not None and 6 <= n <= 12 else None
+
+
 # The Category column is free-text and riddled with typos/case variants,
 # and some rows have education-level text ("7 - Upper Pr. and Secondary")
 # instead of a social category, or a mix of caste + religion ("OBC, Minority
