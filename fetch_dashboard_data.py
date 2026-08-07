@@ -167,6 +167,22 @@ def detect_reason(bucket: str, current_status: str, remark: str) -> str:
     return None
 
 
+# classify.py's own patterns already distinguish "अध्ययनरत" (studying) from
+# "अध्ययनरत नहीं" (NOT studying) — see STUDYING_PATTERNS / NOT_STUDYING_
+# PATTERNS there. But this Sheet's tabs weren't built by running classify.py
+# against raw text; some rows only got checked on `current Status`, and when
+# that was blank but Remark said "अध्ययनरत।" (no negation), they landed in
+# Unclear anyway. This mirrors classify.py's exact distinction to pull just
+# those rows back into Studying, rather than re-deriving classification
+# generally.
+_STUDYING_NO_NEGATION = re.compile(r"अध्ययनरत(?!\s*नहीं)")
+
+
+def is_actually_studying(current_status: str, remark: str) -> bool:
+    text = unicodedata.normalize("NFC", f"{current_status} {remark}")
+    return bool(_STUDYING_NO_NEGATION.search(text))
+
+
 def match_key(row):
     return tuple(str(row.get(c) or "").strip() for c in MATCH_COLS)
 
@@ -228,15 +244,23 @@ def load_rows(sheet_id: str, creds_file: Path) -> list[dict]:
                 r["_willingness"] = WILLING_VALUE
         rows.append(r)
 
+    reclassified_studying = 0
     for r in unclear:
         key = match_key(r)
         if death_keys[key] > 0:
             r["_bucket"] = "Deceased"
             death_keys[key] -= 1
+        elif is_actually_studying(str(r.get("current Status") or ""), str(r.get("Remark") or "")):
+            r["_bucket"] = "Studying"
+            reclassified_studying += 1
         else:
             r["_bucket"] = "Unclear"
         r["_willingness"] = ""
         rows.append(r)
+
+    if reclassified_studying:
+        print(f"  {reclassified_studying} Unclear row(s) reclassified to Studying "
+              f"(Remark said the Hindi word for 'studying' with no negation).")
 
     unmatched_deaths = sum(death_keys.values())
     if unmatched_deaths:

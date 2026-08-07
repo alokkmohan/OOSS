@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-08-07T08:41:42.420225+00:00",
+  "generated_at": "2026-08-07T08:55:18.798716+00:00",
   "summary": {
     "total": 40069,
-    "studying": 3581,
+    "studying": 3632,
     "not_studying": 15436,
-    "unclear": 20988,
+    "unclear": 20937,
     "deceased": 64,
-    "studying_pct": 8.9,
+    "studying_pct": 9.1,
     "not_studying_pct": 38.5,
-    "unclear_pct": 52.4,
+    "unclear_pct": 52.3,
     "deceased_pct": 0.2
   },
   "districts": [
@@ -43,16 +43,6 @@
       "verification_rate_pct": 0.0
     },
     {
-      "district_name": "SHAHJAHANPUR",
-      "total": 3965,
-      "studying": 0,
-      "not_studying": 0,
-      "unclear": 3965,
-      "deceased": 0,
-      "unclear_pct": 100.0,
-      "verification_rate_pct": 0.0
-    },
-    {
       "district_name": "Mahoba",
       "total": 2,
       "studying": 0,
@@ -61,6 +51,16 @@
       "deceased": 0,
       "unclear_pct": 100.0,
       "verification_rate_pct": 0.0
+    },
+    {
+      "district_name": "SHAHJAHANPUR",
+      "total": 3965,
+      "studying": 51,
+      "not_studying": 0,
+      "unclear": 3914,
+      "deceased": 0,
+      "unclear_pct": 98.7,
+      "verification_rate_pct": 1.3
     },
     {
       "district_name": "pratapgarh",
@@ -529,15 +529,15 @@
   },
   "gender_breakdown": {
     "Male": {
-      "Studying": 2130,
+      "Studying": 2168,
       "Not Studying": 8992,
-      "Unclear": 12712,
+      "Unclear": 12674,
       "Deceased": 20
     },
     "Female": {
-      "Studying": 1451,
+      "Studying": 1464,
       "Not Studying": 6443,
-      "Unclear": 8265,
+      "Unclear": 8252,
       "Deceased": 44
     },
     "Transgender": {
@@ -630,7 +630,7 @@
     },
     {
       "label": "Other",
-      "count": 26593
+      "count": 26542
     }
   ]
 }
