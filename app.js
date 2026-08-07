@@ -1,6 +1,7 @@
 let dashboardData = null;
 let districtSort = 'unclear_pct';
 const RECORD_PAGE_SIZE = 200;
+const DISTRICT_TARGET = 75;
 
 // Chart Instances
 let statusChart = null;
@@ -73,8 +74,9 @@ function renderKPIs() {
   document.getElementById('kpi-unclear').textContent = s.unclear.toLocaleString();
   document.getElementById('kpi-unclear-sub').textContent = `${s.unclear_pct}% of Total Records`;
 
-  document.getElementById('kpi-deceased').textContent = s.deceased.toLocaleString();
-  document.getElementById('kpi-deceased-sub').textContent = `${s.deceased_pct}% of Total Records`;
+  const districtsReporting = dashboardData.districts.length;
+  document.getElementById('kpi-districts').textContent = `${districtsReporting} / ${DISTRICT_TARGET}`;
+  document.getElementById('kpi-districts-sub').textContent = `${Math.round(districtsReporting / DISTRICT_TARGET * 100)}% coverage`;
 }
 
 function renderStatusChart() {
