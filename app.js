@@ -88,7 +88,7 @@ function renderStatusChart() {
   statusChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Studying', 'Not Studying', 'Unclear / Pending', 'Deceased'],
+      labels: ['Studying', 'Not Studying', 'Unclear / Pending', 'Death Cases'],
       datasets: [{
         data: [s.studying, s.not_studying, s.unclear, s.deceased],
         backgroundColor: ['#22c55e', '#f97316', '#64748b', '#ef4444'],
