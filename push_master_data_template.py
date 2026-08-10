@@ -4,15 +4,21 @@ exact 33-column layout from Out_of_School_Student_Tracking_Template_-_1.xlsx
 (the structured intake form meant for the *next* round of district data
 collection — see README's "Known limitations" and "Related files").
 
-Populates every column we actually have data for, mapped to the template's
-own dropdown vocabulary (e.g. Gender -> MALE/FEMALE/OTHER, Category ->
-SC/ST/OBC/GENERAL/MINORITY, Reason for Dropout -> the template's fixed
-reason list). Columns this survey never collected — Student ID, UDISE Code,
-CWSN, Alternate Mobile, the whole Verification Trail (call attempts,
-verified by, dates), Follow-up Required, and Interested in Studying via
-NIOS — are left BLANK, same policy as push_master_raw_to_sheet.py: don't
-fabricate data that was never collected, leave it for districts to fill in
-when they do this round of verification.
+Reads from the "Master Raw" tab (via push_master_raw_to_sheet.py) rather
+than recomputing from the source tabs independently — this is the single
+source of truth for per-row classification, so the two tabs stay
+consistent by construction, and any manual corrections made directly in
+Master Raw (e.g. fixing a misclassified row) carry through here too.
+Run push_master_raw_to_sheet.py first if Master Raw itself needs refreshing
+from the source tabs.
+
+Columns this survey never collected — Student ID, UDISE Code, CWSN,
+Alternate Mobile, the call-attempt/verification trail, Follow-up Required,
+and Interested in Studying via NIOS — are left BLANK: don't fabricate data
+that was never collected, leave it for districts to fill in when they do
+this round of verification. Data Collected By / Collection Date (if ever
+filled in on Master Raw) are carried into Verified By / Verification Date,
+the closest equivalent fields in the template.
 
 SETUP: same as push_dashboard_to_sheet.py — needs the service account to
 have Editor access to the Sheet.
@@ -27,15 +33,8 @@ from pathlib import Path
 import gspread
 from google.oauth2.service_account import Credentials
 
-from fetch_dashboard_data import (
-    DEFAULT_CREDS_FILE,
-    DEFAULT_SHEET_ID,
-    detect_reason,
-    load_rows,
-    normalize_category,
-    normalize_class,
-    normalize_gender,
-)
+from fetch_dashboard_data import DEFAULT_CREDS_FILE, DEFAULT_SHEET_ID
+from push_master_raw_to_sheet import MASTER_RAW_TAB
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 TEMPLATE_TAB = "Master Data (Tracking Template)"
@@ -59,23 +58,17 @@ HEADERS = [
 GENDER_TO_TEMPLATE = {"Male": "MALE", "Female": "FEMALE", "Transgender": "OTHER"}
 CATEGORY_TO_TEMPLATE = {"SC": "SC", "ST": "ST", "OBC": "OBC", "General": "GENERAL", "Minority": "MINORITY"}
 
-BUCKET_TO_CURRENT_STATUS = {
-    "Studying": "Studying",
-    "Not Studying": "Not Studying",
+STATUS_CATEGORY_TO_CURRENT_STATUS = {
+    "Known - Studying": "Studying",
+    "Known - Not Studying / Dropout": "Not Studying",
     "Unclear": "Unclear",
     "Deceased": "Deceased",
 }
-BUCKET_TO_STATUS_CATEGORY = {
-    "Studying": "Known - Studying",
-    "Not Studying": "Known - Not Studying / Dropout",
-    "Unclear": "Unclear (no valid status)",
-    "Deceased": "Deceased",
-}
 
-# Our reason-detection categories (see detect_reason in fetch_dashboard_data.py)
-# mapped onto the template's fixed "Reason for Dropout" dropdown list. Only
-# applied to Not Studying / Deceased rows — the field doesn't apply to
-# Studying or Unclear rows in the template's own design.
+# Our reason-detection categories (see detect_reason in fetch_dashboard_data.py,
+# same values Master Raw's "Reason Category" column holds) mapped onto the
+# template's fixed "Reason for Dropout" dropdown list. Only meaningful for
+# Not Studying / Deceased rows in the template's own design.
 REASON_TO_TEMPLATE = {
     "Financial Problem": "Financial constraints",
     "Migrated for Labour/Work": "Migration",
@@ -96,55 +89,54 @@ REASON_TO_ACTIVITY = {
 }
 
 
-def build_template_rows(rows: list[dict]) -> list[list]:
+def read_master_raw(sh):
+    ws = sh.worksheet(MASTER_RAW_TAB)
+    return ws.get_all_records()
+
+
+def build_template_rows(master_raw_rows: list[dict]) -> list[list]:
     out = [HEADERS]
-    for i, r in enumerate(rows, start=1):
-        bucket = r["_bucket"]
-        current_status_raw = str(r.get("current Status") or "").strip()
-        remark = str(r.get("Remark") or "").strip()
-
-        gender_norm = normalize_gender(str(r.get("Gender") or ""))
-        category_norm = normalize_category(str(r.get("Category") or ""))
-        class_norm = normalize_class(r.get("Class"))
-
-        reason_key = None
-        if bucket in ("Not Studying", "Deceased"):
-            reason_key = detect_reason(bucket, current_status_raw, remark)
+    for row in master_raw_rows:
+        status_category = str(row.get("Status Category") or "").strip()
+        current_status = STATUS_CATEGORY_TO_CURRENT_STATUS.get(status_category, "")
+        reason_key = str(row.get("Reason Category") or "").strip() or None
+        gender = str(row.get("Gender") or "").strip()
+        category = str(row.get("Social Category") or "").strip()
 
         out.append([
-            i,
+            row.get("Sr No", ""),
             "",  # Student ID — not in source data
-            str(r.get("District Name") or "").strip(),
-            str(r.get("Block Name") or "").strip(),
+            row.get("District Name", ""),
+            row.get("Block Name", ""),
             "",  # Village / Gram Panchayat — not captured separately from Address
-            str(r.get("Student Name") or "").strip(),
-            str(r.get("Father Name") or "").strip(),
-            GENDER_TO_TEMPLATE.get(gender_norm, ""),
-            CATEGORY_TO_TEMPLATE.get(category_norm, ""),
+            row.get("Student Name", ""),
+            row.get("Father Name", ""),
+            GENDER_TO_TEMPLATE.get(gender, ""),
+            CATEGORY_TO_TEMPLATE.get(category, ""),
             "",  # CWSN — not in source data
             "",  # School Last Attended — not in source data
             "",  # UDISE Code — not in source data
-            class_norm if class_norm is not None else "",
-            str(r.get("Droupout Year") or "").strip(),
-            str(r.get("Address") or "").strip(),
-            str(r.get("Mobile No.") or "").strip(),
+            row.get("Class", ""),
+            row.get("Dropout Year", ""),
+            row.get("Address", ""),
+            row.get("Mobile No.", ""),
             "",  # Alternate Mobile No. — not in source data
-            BUCKET_TO_CURRENT_STATUS[bucket],
+            current_status,
             REASON_TO_TEMPLATE.get(reason_key, "") if reason_key else "",
             "",  # If Studying: Current School/Institution — not in source data
             "",  # If Studying: Mode — not in source data
             "",  # If Studying: Current Class — not distinguished from Class Last Attended
-            REASON_TO_ACTIVITY.get(reason_key, "") if bucket == "Not Studying" else "",
+            REASON_TO_ACTIVITY.get(reason_key, "") if current_status == "Not Studying" else "",
             "",  # If Migrated: Current Location — no Migrated bucket in source data
             "",  # No. of Call Attempts — not in source data
             "",  # Last Attempt Date — not in source data
             "",  # Last Attempt Result — not in source data
-            "",  # Verified By — not in source data
-            "",  # Verification Date — not in source data
+            row.get("Data Collected By", ""),  # closest equivalent field
+            row.get("Collection Date", ""),  # closest equivalent field
             "",  # Follow-up Required (Y/N) — not in source data
-            remark,  # carried forward as the verbatim field note
-            BUCKET_TO_STATUS_CATEGORY[bucket],
-            "",  # Interested in Studying via NIOS — not in source data (README limitation)
+            row.get("Remark (Verbatim)", ""),  # carried forward as the verbatim field note
+            status_category,
+            row.get("Interested in Studying via NIOS (Yes/No)", ""),
         ])
     return out
 
@@ -173,12 +165,12 @@ def main():
     gc = gspread.authorize(creds)
     sh = gc.open_by_key(args.sheet_id)
 
-    print("Reading data tabs ...")
-    rows = load_rows(args.sheet_id, args.creds)
-    print(f"  {len(rows):,} total rows loaded.")
+    print(f"Reading '{MASTER_RAW_TAB}' tab ...")
+    master_raw_rows = read_master_raw(sh)
+    print(f"  {len(master_raw_rows):,} rows loaded.")
 
     print("Building Master Data (Tracking Template) rows ...")
-    table = build_template_rows(rows)
+    table = build_template_rows(master_raw_rows)
 
     print("Writing tab ...")
     ws = get_or_replace_ws(sh, TEMPLATE_TAB, rows=len(table) + 5, cols=len(HEADERS))

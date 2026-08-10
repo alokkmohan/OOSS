@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-08-07T11:19:17.205610+00:00",
+  "generated_at": "2026-08-10T12:03:58.234003+00:00",
   "summary": {
     "total": 40069,
-    "studying": 3632,
-    "not_studying": 15436,
+    "studying": 3256,
+    "not_studying": 15812,
     "unclear": 20937,
     "deceased": 64,
-    "studying_pct": 9.1,
-    "not_studying_pct": 38.5,
+    "studying_pct": 8.1,
+    "not_studying_pct": 39.5,
     "unclear_pct": 52.3,
     "deceased_pct": 0.2
   },
@@ -85,8 +85,8 @@
     {
       "district_name": "BALLIA",
       "total": 1200,
-      "studying": 307,
-      "not_studying": 48,
+      "studying": 280,
+      "not_studying": 75,
       "unclear": 845,
       "deceased": 0,
       "unclear_pct": 70.4,
@@ -105,8 +105,8 @@
     {
       "district_name": "RAE BARELI",
       "total": 1302,
-      "studying": 78,
-      "not_studying": 370,
+      "studying": 77,
+      "not_studying": 371,
       "unclear": 853,
       "deceased": 1,
       "unclear_pct": 65.5,
@@ -115,8 +115,8 @@
     {
       "district_name": "LUCKNOW",
       "total": 350,
-      "studying": 33,
-      "not_studying": 94,
+      "studying": 31,
+      "not_studying": 96,
       "unclear": 223,
       "deceased": 0,
       "unclear_pct": 63.7,
@@ -125,8 +125,8 @@
     {
       "district_name": "SAHARANPUR",
       "total": 2520,
-      "studying": 184,
-      "not_studying": 729,
+      "studying": 174,
+      "not_studying": 739,
       "unclear": 1599,
       "deceased": 8,
       "unclear_pct": 63.5,
@@ -185,8 +185,8 @@
     {
       "district_name": "GONDA",
       "total": 738,
-      "studying": 86,
-      "not_studying": 247,
+      "studying": 67,
+      "not_studying": 266,
       "unclear": 404,
       "deceased": 1,
       "unclear_pct": 54.7,
@@ -195,8 +195,8 @@
     {
       "district_name": "AURAIYA",
       "total": 461,
-      "studying": 79,
-      "not_studying": 133,
+      "studying": 74,
+      "not_studying": 138,
       "unclear": 249,
       "deceased": 0,
       "unclear_pct": 54.0,
@@ -225,8 +225,8 @@
     {
       "district_name": "FATEHPUR",
       "total": 1027,
-      "studying": 141,
-      "not_studying": 397,
+      "studying": 99,
+      "not_studying": 439,
       "unclear": 486,
       "deceased": 3,
       "unclear_pct": 47.3,
@@ -235,8 +235,8 @@
     {
       "district_name": "JHANSI",
       "total": 333,
-      "studying": 83,
-      "not_studying": 103,
+      "studying": 72,
+      "not_studying": 114,
       "unclear": 145,
       "deceased": 2,
       "unclear_pct": 43.5,
@@ -255,8 +255,8 @@
     {
       "district_name": "SAMBHAL (BHIM NAGAR)",
       "total": 772,
-      "studying": 167,
-      "not_studying": 390,
+      "studying": 144,
+      "not_studying": 413,
       "unclear": 211,
       "deceased": 4,
       "unclear_pct": 27.3,
@@ -265,8 +265,8 @@
     {
       "district_name": "RAMPUR",
       "total": 972,
-      "studying": 140,
-      "not_studying": 581,
+      "studying": 121,
+      "not_studying": 600,
       "unclear": 249,
       "deceased": 2,
       "unclear_pct": 25.6,
@@ -295,8 +295,8 @@
     {
       "district_name": "PILIBHIT",
       "total": 875,
-      "studying": 125,
-      "not_studying": 605,
+      "studying": 25,
+      "not_studying": 705,
       "unclear": 141,
       "deceased": 4,
       "unclear_pct": 16.1,
@@ -355,8 +355,8 @@
     {
       "district_name": "HARDOI",
       "total": 1400,
-      "studying": 192,
-      "not_studying": 1070,
+      "studying": 189,
+      "not_studying": 1073,
       "unclear": 134,
       "deceased": 4,
       "unclear_pct": 9.6,
@@ -365,8 +365,8 @@
     {
       "district_name": "SHRAWASTI",
       "total": 383,
-      "studying": 95,
-      "not_studying": 251,
+      "studying": 85,
+      "not_studying": 261,
       "unclear": 35,
       "deceased": 2,
       "unclear_pct": 9.1,
@@ -385,8 +385,8 @@
     {
       "district_name": "MAHOBA",
       "total": 410,
-      "studying": 97,
-      "not_studying": 285,
+      "studying": 27,
+      "not_studying": 355,
       "unclear": 28,
       "deceased": 0,
       "unclear_pct": 6.8,
@@ -405,8 +405,8 @@
     {
       "district_name": "MAINPURI",
       "total": 881,
-      "studying": 34,
-      "not_studying": 808,
+      "studying": 24,
+      "not_studying": 818,
       "unclear": 37,
       "deceased": 2,
       "unclear_pct": 4.2,
@@ -415,8 +415,8 @@
     {
       "district_name": "BAREILLY",
       "total": 558,
-      "studying": 48,
-      "not_studying": 489,
+      "studying": 40,
+      "not_studying": 497,
       "unclear": 21,
       "deceased": 0,
       "unclear_pct": 3.8,
@@ -435,8 +435,8 @@
     {
       "district_name": "BARABANKI",
       "total": 1292,
-      "studying": 2,
-      "not_studying": 1288,
+      "studying": 0,
+      "not_studying": 1290,
       "unclear": 0,
       "deceased": 2,
       "unclear_pct": 0.0,
@@ -445,8 +445,8 @@
     {
       "district_name": "SONBHADRA",
       "total": 490,
-      "studying": 14,
-      "not_studying": 476,
+      "studying": 0,
+      "not_studying": 490,
       "unclear": 0,
       "deceased": 0,
       "unclear_pct": 0.0,
@@ -474,19 +474,19 @@
     }
   ],
   "willingness": {
-    "willing": 14617,
+    "willing": 14993,
     "unwilling": 819
   },
   "gender_breakdown": {
     "Male": {
-      "Studying": 2168,
-      "Not Studying": 8992,
+      "Studying": 1955,
+      "Not Studying": 9205,
       "Unclear": 12674,
       "Deceased": 20
     },
     "Female": {
-      "Studying": 1464,
-      "Not Studying": 6443,
+      "Studying": 1301,
+      "Not Studying": 6606,
       "Unclear": 8252,
       "Deceased": 44
     },
@@ -499,32 +499,32 @@
   },
   "category_breakdown": {
     "SC": {
-      "Studying": 403,
-      "Not Studying": 1722,
+      "Studying": 352,
+      "Not Studying": 1773,
       "Unclear": 1266,
       "Deceased": 8
     },
     "OBC": {
-      "Studying": 790,
-      "Not Studying": 3442,
+      "Studying": 672,
+      "Not Studying": 3560,
       "Unclear": 2193,
       "Deceased": 20
     },
     "Minority": {
-      "Studying": 95,
-      "Not Studying": 213,
+      "Studying": 92,
+      "Not Studying": 216,
       "Unclear": 81,
       "Deceased": 1
     },
     "General": {
-      "Studying": 276,
-      "Not Studying": 647,
+      "Studying": 245,
+      "Not Studying": 678,
       "Unclear": 766,
       "Deceased": 3
     },
     "ST": {
-      "Studying": 6,
-      "Not Studying": 146,
+      "Studying": 2,
+      "Not Studying": 150,
       "Unclear": 12,
       "Deceased": 0
     }
@@ -536,11 +536,11 @@
     },
     {
       "label": "Migrated for Labour/Work",
-      "count": 744
+      "count": 778
     },
     {
       "label": "Marriage",
-      "count": 470
+      "count": 481
     },
     {
       "label": "Admission Not Taken / TC Issue",
@@ -580,25 +580,25 @@
     },
     {
       "label": "Other",
-      "count": 26542
+      "count": 26873
     }
   ],
   "class_breakdown": {
     "10": {
-      "Studying": 1907,
-      "Not Studying": 8385,
+      "Studying": 1668,
+      "Not Studying": 8624,
       "Unclear": 10778,
       "Deceased": 26
     },
     "11": {
-      "Studying": 885,
-      "Not Studying": 3003,
+      "Studying": 848,
+      "Not Studying": 3040,
       "Unclear": 4343,
       "Deceased": 18
     },
     "9": {
-      "Studying": 805,
-      "Not Studying": 3885,
+      "Studying": 705,
+      "Not Studying": 3985,
       "Unclear": 5247,
       "Deceased": 20
     },

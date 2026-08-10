@@ -259,6 +259,49 @@ def is_actually_studying(current_status: str, remark: str) -> bool:
     return bool(_STUDYING_NO_NEGATION.search(text))
 
 
+# The reverse problem: some Known - Studying rows have `current Status`
+# text like "Left study", "DROPOUT", "STUDY CLOSED", "left study in 9the"
+# — landed in the Studying tab, presumably because a broad "study" keyword
+# match upstream fired without checking for "left"/"closed". Confirmed by
+# manually auditing the Known - Studying tab (current Status AND Remark —
+# many rows put the real signal in Remark, e.g. current Status "STUDY" /
+# Remark "NO STUDYING" or "FATHER WISH" or "आगे और पढ़ेगी" (will study
+# further, i.e. not currently)).
+#
+# Two checks:
+#  - _NOT_STUDYING_SIGNAL_STATUS: checked against current Status ONLY —
+#    strong enough on its own (left study/dropout/study closed/struck off).
+#  - _NOT_STUDYING_SIGNAL_ANY: checked against current Status + Remark
+#    combined — for signals that only show up in Remark. This is where the
+#    false-positive risk lives (e.g. current Status "DOING BSC FROM
+#    COLLEGE" + Remark "LEFT SCHOOL" means transferred, not dropped out),
+#    so _NOT_STUDYING_NEGATIONS excludes rows whose current Status itself
+#    describes active enrollment ("DOING ... COLLEGE/SCHOOL/CLASS/NIOS/ITI",
+#    "STUDYING IN/AT/FROM ...") before the Remark-only signal is trusted.
+_NOT_STUDYING_NEGATIONS = re.compile(
+    r"not\s*drop\s*out|not\s*dropout|delete\s*from\s*dropout|now\s*active|"
+    r"active\s*in\s*class|admission\s*in\s*other|taken\s*admission|"
+    r"studying\s*in|studying\s*at|studying\s*from|"
+    r"doing.{0,25}(college|school|institute|class|nios|\biti\b)",
+    re.IGNORECASE)
+_NOT_STUDYING_SIGNAL_STATUS = re.compile(
+    r"left\s*stud|left\s*school|drop\s*out|dropout|struck\s*of|stud(y)?\s*clos", re.IGNORECASE)
+_NOT_STUDYING_SIGNAL_ANY = re.compile(
+    r"no\s*study|not\s*interest|father.{0,3}wish|\bfarm(er|ing)?\b|interst?ed|"
+    r"आगे.{0,15}पढ़ेगी|left\s*(the\s*)?school|struck\s*of|drop\w*\s*school",
+    re.IGNORECASE)
+
+
+def is_actually_not_studying(current_status: str, remark: str) -> bool:
+    text_status = unicodedata.normalize("NFC", current_status)
+    text_any = unicodedata.normalize("NFC", f"{current_status} {remark}")
+    if _NOT_STUDYING_NEGATIONS.search(text_any):
+        return False
+    if _NOT_STUDYING_SIGNAL_STATUS.search(text_status):
+        return True
+    return bool(_NOT_STUDYING_SIGNAL_ANY.search(text_any))
+
+
 def match_key(row):
     return tuple(str(row.get(c) or "").strip() for c in MATCH_COLS)
 
@@ -309,10 +352,20 @@ def load_rows(sheet_id: str, creds_file: Path) -> list[dict]:
     death_keys = Counter(match_key(r) for r in death)
 
     rows = []
+    reclassified_not_studying = 0
     for r in studying:
-        r["_bucket"] = "Studying"
-        r["_willingness"] = ""
+        if is_actually_not_studying(str(r.get("current Status") or ""), str(r.get("Remark") or "")):
+            r["_bucket"] = "Not Studying"
+            r["_willingness"] = WILLING_VALUE  # no willingness info for these; default like elsewhere
+            reclassified_not_studying += 1
+        else:
+            r["_bucket"] = "Studying"
+            r["_willingness"] = ""
         rows.append(r)
+
+    if reclassified_not_studying:
+        print(f"  {reclassified_not_studying} Known-Studying row(s) reclassified to Not Studying "
+              f"(current Status/Remark said 'left study'/'dropout'/'study closed'/'father wish' etc.).")
 
     for r in not_studying:
         key = match_key(r)
