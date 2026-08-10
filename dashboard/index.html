@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Field Data Collection — Live Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-primary: #f1f5f9; --bg-card: #ffffff; --bg-card-border: rgba(15,23,42,0.08);
+      --bg-subtle: rgba(15,23,42,0.04); --text-main: #0f172a; --text-muted: #64748b;
+      --accent-blue: #0ea5e9; --accent-green: #16a34a; --accent-red: #dc2626;
+      --accent-orange: #ea580c; --accent-purple: #9333ea;
+      --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-primary); color: var(--text-main); font-family: var(--font-family);
+      min-height: 100vh; padding: 24px; line-height: 1.5;
+    }
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--bg-card-border);
+      flex-wrap: wrap; gap: 16px;
+    }
+    .header h1 {
+      font-size: 1.5rem; font-weight: 700;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .header p { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+    .meta { color: var(--text-muted); font-size: 0.8rem; }
+
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: 12px;
+      padding: 18px; box-shadow: 0 1px 3px rgba(15,23,42,0.06); position: relative; overflow: hidden;
+    }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+    .kpi-card.blue::before { background: var(--accent-blue); }
+    .kpi-card.green::before { background: var(--accent-green); }
+    .kpi-card.orange::before { background: var(--accent-orange); }
+    .kpi-card.red::before { background: var(--accent-red); }
+    .kpi-card.gray::before { background: #64748b; }
+    .kpi-label {
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted);
+    }
+    .kpi-value { font-size: 1.6rem; font-weight: 700; margin: 6px 0 2px; }
+    .kpi-sub { font-size: 0.72rem; color: var(--text-muted); }
+
+    .charts-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; margin-bottom: 24px; }
+    .chart-card {
+      background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: 12px;
+      padding: 20px; box-shadow: 0 1px 3px rgba(15,23,42,0.06); display: flex; flex-direction: column;
+    }
+    .chart-card.col-4 { grid-column: span 4; }
+    .chart-card.col-6 { grid-column: span 6; }
+    .chart-card.col-8 { grid-column: span 8; }
+    .chart-card.col-12 { grid-column: span 12; }
+    @media (max-width: 1024px) {
+      .chart-card.col-4, .chart-card.col-6, .chart-card.col-8 { grid-column: span 12; }
+    }
+    .chart-title { font-size: 1rem; font-weight: 600; margin-bottom: 14px; }
+    .chart-container { position: relative; flex: 1; min-height: 260px; }
+    .chart-container-tall { min-height: 380px; }
+
+    .table-card {
+      background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: 12px;
+      padding: 20px; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    }
+    .table-wrap { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th {
+      background: #f8fafc; color: var(--text-muted); font-weight: 600; padding: 12px 14px;
+      position: sticky; top: 0; text-align: left; border-bottom: 1px solid var(--bg-card-border);
+    }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--bg-card-border); }
+    tr:hover td { background: var(--bg-subtle); }
+    .empty-note {
+      color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 40px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Out-of-School Student — Field Collection Dashboard</h1>
+      <p>Live progress from the field data-collection tool (grows as coordinators submit entries)</p>
+    </div>
+    <div class="meta" id="generatedAt"></div>
+  </div>
+
+  <section class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">Target Students</div>
+      <div class="kpi-value" id="kpiTarget">—</div>
+      <div class="kpi-sub">All 75 districts</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Collected So Far</div>
+      <div class="kpi-value" id="kpiCollected">—</div>
+      <div class="kpi-sub" id="kpiCollectedSub"></div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Studying</div>
+      <div class="kpi-value" id="kpiStudying">—</div>
+      <div class="kpi-sub" id="kpiStudyingSub"></div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Not Studying</div>
+      <div class="kpi-value" id="kpiNotStudying">—</div>
+      <div class="kpi-sub" id="kpiNotStudyingSub"></div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Deceased</div>
+      <div class="kpi-value" id="kpiDeceased">—</div>
+      <div class="kpi-sub"></div>
+    </div>
+  </section>
+
+  <section class="charts-grid">
+    <div class="chart-card col-4">
+      <div class="chart-title">Status Breakdown</div>
+      <div class="chart-container"><canvas id="chartStatus"></canvas></div>
+    </div>
+    <div class="chart-card col-4">
+      <div class="chart-title">Willing to Resume (Not Studying)</div>
+      <div class="chart-container"><canvas id="chartWilling"></canvas></div>
+    </div>
+    <div class="chart-card col-4">
+      <div class="chart-title">Mode: Regular vs NIOS (Willing)</div>
+      <div class="chart-container"><canvas id="chartMode"></canvas></div>
+    </div>
+    <div class="chart-card col-12">
+      <div class="chart-title">Reason for Not Studying</div>
+      <div class="chart-container chart-container-tall"><canvas id="chartReason"></canvas></div>
+    </div>
+  </section>
+
+  <section class="table-card">
+    <div class="chart-title">District-wise Progress</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>District</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Deceased</th></tr>
+        </thead>
+        <tbody id="districtBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    // Bump if the Apps Script deployment is ever recreated (new deployment
+    // = new URL) — this page's own URL never changes for viewers even if
+    // this does.
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxoVCXn3cza4OEFK6TC6QEQkoEXwo-OoW33VLxaK_G4KRftqQejl6RQu_L_eY0L-yPdSQ/exec';
+
+    const COLORS = { green: '#16a34a', orange: '#ea580c', red: '#dc2626', gray: '#64748b', blue: '#0ea5e9', purple: '#9333ea' };
+
+    async function loadSummary() {
+      const res = await fetch(API_URL + '?action=summary');
+      const body = await res.json();
+      if (!body.ok) throw new Error(body.error || 'Failed to load summary');
+      return body.data;
+    }
+
+    function pct(n, d) { return d ? Math.round((n / d) * 1000) / 10 : 0; }
+
+    function renderKpis(s) {
+      document.getElementById('kpiTarget').textContent = s.targetTotal.toLocaleString();
+      document.getElementById('kpiCollected').textContent = s.collected.toLocaleString();
+      document.getElementById('kpiCollectedSub').textContent = pct(s.collected, s.targetTotal) + '% of target';
+      document.getElementById('kpiStudying').textContent = s.studying.toLocaleString();
+      document.getElementById('kpiStudyingSub').textContent = pct(s.studying, s.collected) + '% of collected';
+      document.getElementById('kpiNotStudying').textContent = s.notStudying.toLocaleString();
+      document.getElementById('kpiNotStudyingSub').textContent = pct(s.notStudying, s.collected) + '% of collected';
+      document.getElementById('kpiDeceased').textContent = s.deceased.toLocaleString();
+      document.getElementById('generatedAt').textContent = 'Data as of ' + new Date(s.generatedAt).toLocaleString();
+    }
+
+    function renderStatusChart(s) {
+      new Chart(document.getElementById('chartStatus'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Studying', 'Not Studying', 'Deceased'],
+          datasets: [{ data: [s.studying, s.notStudying, s.deceased],
+            backgroundColor: [COLORS.green, COLORS.orange, COLORS.red], borderWidth: 0 }],
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#475569' } } } },
+      });
+    }
+
+    function renderWillingChart(s) {
+      new Chart(document.getElementById('chartWilling'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Willing', 'Not Willing'],
+          datasets: [{ data: [s.willing, s.unwilling], backgroundColor: [COLORS.blue, COLORS.purple], borderWidth: 0 }],
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#475569' } } } },
+      });
+    }
+
+    function renderModeChart(s) {
+      new Chart(document.getElementById('chartMode'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Regular', 'NIOS'],
+          datasets: [{ data: [s.modeRegular, s.modeNios], backgroundColor: [COLORS.green, COLORS.blue], borderWidth: 0 }],
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#475569' } } } },
+      });
+    }
+
+    function renderReasonChart(s) {
+      const entries = Object.entries(s.reasonBreakdown).sort((a, b) => b[1] - a[1]);
+      new Chart(document.getElementById('chartReason'), {
+        type: 'bar',
+        data: {
+          labels: entries.map(e => e[0]),
+          datasets: [{ label: 'Students', data: entries.map(e => e[1]), backgroundColor: COLORS.blue, borderRadius: 4 }],
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.08)' } },
+            y: { ticks: { color: '#475569' }, grid: { display: false } },
+          },
+        },
+      });
+    }
+
+    function renderDistrictTable(s) {
+      const rows = Object.entries(s.districtBreakdown).sort((a, b) => b[1].collected - a[1].collected);
+      const tbody = document.getElementById('districtBody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-note">No submissions yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(([district, d]) => `
+        <tr>
+          <td style="font-weight:600;">${district}</td>
+          <td>${d.collected.toLocaleString()}</td>
+          <td>${d.studying.toLocaleString()}</td>
+          <td>${d.notStudying.toLocaleString()}</td>
+          <td>${d.deceased.toLocaleString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    (async function init() {
+      try {
+        const s = await loadSummary();
+        renderKpis(s);
+        renderStatusChart(s);
+        renderWillingChart(s);
+        renderModeChart(s);
+        renderReasonChart(s);
+        renderDistrictTable(s);
+      } catch (err) {
+        document.body.innerHTML = `<div class="empty-note">Could not load dashboard data: ${err.message}</div>`;
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -17,12 +17,17 @@ const SHEET_ID = '1WWifakyqkBoA922wu16bCYBZTjK2NyrxkVC_6eLBIV0'; // "Out of Scho
 const TARGET_LIST_TAB = 'Out of School Student Status - Raw data';
 const COLLECTION_TAB = 'Field Data Collection';
 
-// 1-indexed column positions in the target list tab (from the source CSV).
+// 1-indexed column positions in the target list tab. This sheet's actual
+// header row (District Name, Block Name, Last UDISE Code, Last School
+// Name, Student PEN, Student Name, Sex, Mobile No, Mother Name, Father
+// Name, Student Sub Status, Last Class, Eligible Class to Import, Academic
+// Year) has no School Category / Student State Code columns and a
+// different column order than the original source CSV — always verify
+// against row 1 of the actual tab if this sheet gets rebuilt/replaced.
 const COL = {
-  DISTRICT: 1, BLOCK: 2, UDISE: 3, SCHOOL_CATEGORY: 4, SCHOOL: 5,
-  PEN: 6, STATE_CODE: 7, STUDENT: 8, GENDER: 9, MOBILE: 10,
-  MOTHER: 11, FATHER: 12, SUB_STATUS: 13, CLASS: 14, ELIGIBLE_CLASS: 15,
-  ACADEMIC_YEAR: 16,
+  DISTRICT: 1, BLOCK: 2, UDISE: 3, SCHOOL: 4, PEN: 5, STUDENT: 6,
+  GENDER: 7, MOBILE: 8, MOTHER: 9, FATHER: 10, SUB_STATUS: 11,
+  CLASS: 12, ELIGIBLE_CLASS: 13, ACADEMIC_YEAR: 14,
 };
 
 const COLLECTION_HEADERS = [
@@ -34,10 +39,46 @@ const COLLECTION_HEADERS = [
 // Column indices (1-indexed) within COLLECTION_HEADERS, for readability.
 const CCOL = { PEN: 1, STATUS: 9, WILLING: 10, MODE: 11, REASON: 12, UPDATED: 15 };
 
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Out-of-School Student — Field Data Collection')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+/**
+ * This is a pure JSON API — the actual form UI is hosted separately on
+ * GitHub Pages (ooss.dataimpact.in/collect/), which calls this via fetch().
+ * That way the public-facing URL field coordinators use stays stable even
+ * if this Apps Script deployment URL ever changes (redeploys, project
+ * moves, etc.) — only the API_URL constant in that page needs updating.
+ *
+ * GET  ?action=districts
+ * GET  ?action=schools&district=...
+ * GET  ?action=students&district=...&udise=...   (udise optional)
+ * GET  ?action=summary                             (for the /dashboard/ page)
+ * POST { action: 'submit', payload: {...} }        (body as text/plain JSON,
+ *        see submitEntry() for payload shape — avoids a CORS preflight)
+ */
+function jsonOutput_(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  try {
+    const action = e && e.parameter && e.parameter.action;
+    if (action === 'districts') return jsonOutput_({ ok: true, data: getDistricts() });
+    if (action === 'schools') return jsonOutput_({ ok: true, data: getSchools(e.parameter.district) });
+    if (action === 'students') return jsonOutput_({ ok: true, data: getStudents(e.parameter.district, e.parameter.udise || '') });
+    if (action === 'summary') return jsonOutput_({ ok: true, data: getSummary() });
+    return jsonOutput_({ ok: false, error: 'Unknown or missing action.' });
+  } catch (err) {
+    return jsonOutput_({ ok: false, error: err.message });
+  }
+}
+
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (body.action === 'submit') return jsonOutput_(submitEntry(body.payload));
+    return jsonOutput_({ ok: false, error: 'Unknown or missing action.' });
+  } catch (err) {
+    return jsonOutput_({ ok: false, error: err.message });
+  }
 }
 
 function spreadsheet_() {
@@ -64,15 +105,17 @@ function getSchools(district) {
   const sh = targetSheet_();
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
-  const values = sh.getRange(2, 1, lastRow - 1, COL.SCHOOL).getValues();
-  const seen = new Map(); // key: school||block -> {school, block}
+  const width = Math.max(COL.SCHOOL, COL.UDISE, COL.BLOCK);
+  const values = sh.getRange(2, 1, lastRow - 1, width).getValues();
+  const seen = new Map(); // key: udise||school -> {udise, school, block}
   values.forEach(r => {
     if (String(r[COL.DISTRICT - 1] || '').trim() !== district) return;
     const school = String(r[COL.SCHOOL - 1] || '').trim();
+    const udise = String(r[COL.UDISE - 1] || '').trim();
     const block = String(r[COL.BLOCK - 1] || '').trim();
     if (!school) return;
-    const key = school + '||' + block;
-    if (!seen.has(key)) seen.set(key, { school, block });
+    const key = udise + '||' + school;
+    if (!seen.has(key)) seen.set(key, { udise, school, block });
   });
   return Array.from(seen.values()).sort((a, b) => a.school.localeCompare(b.school));
 }
@@ -100,25 +143,24 @@ function collectionStatusByPen_() {
 }
 
 /**
- * district: required. school: optional ('' = all schools in district).
- * search: optional, matches Student Name or Father Name (case-insensitive).
+ * district: required. udise: optional ('' = all schools in district) —
+ * the school's UDISE code, matched exactly (more reliable than school
+ * name, which can repeat).
  */
-function getStudents(district, school, search) {
+function getStudents(district, udise) {
   const sh = targetSheet_();
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
   const width = COL.ACADEMIC_YEAR;
   const values = sh.getRange(2, 1, lastRow - 1, width).getValues();
   const statusMap = collectionStatusByPen_();
-  const needle = (search || '').trim().toLowerCase();
 
   const out = [];
   values.forEach(r => {
     if (String(r[COL.DISTRICT - 1] || '').trim() !== district) return;
-    if (school && String(r[COL.SCHOOL - 1] || '').trim() !== school) return;
+    if (udise && String(r[COL.UDISE - 1] || '').trim() !== udise) return;
     const name = String(r[COL.STUDENT - 1] || '').trim();
     const father = String(r[COL.FATHER - 1] || '').trim();
-    if (needle && !(name.toLowerCase().includes(needle) || father.toLowerCase().includes(needle))) return;
 
     const pen = String(r[COL.PEN - 1] || '').trim();
     const existing = statusMap[pen];
@@ -138,6 +180,67 @@ function getStudents(district, school, search) {
   });
   out.sort((a, b) => a.name.localeCompare(b.name));
   return out;
+}
+
+/**
+ * Aggregate stats over the Field Data Collection tab, for the live
+ * dashboard (ooss.dataimpact.in/dashboard/). Grows as coordinators submit
+ * entries via the collect form — there's no separate "run a script"
+ * refresh step, the dashboard just reads this on each page load.
+ */
+function getSummary() {
+  const targetTotal = (function () {
+    const sh = targetSheet_();
+    return Math.max(sh.getLastRow() - 1, 0);
+  })();
+
+  const sh = spreadsheet_().getSheetByName(COLLECTION_TAB);
+  const summary = {
+    targetTotal: targetTotal,
+    collected: 0,
+    studying: 0,
+    notStudying: 0,
+    deceased: 0,
+    willing: 0,
+    unwilling: 0,
+    modeRegular: 0,
+    modeNios: 0,
+    reasonBreakdown: {},
+    districtBreakdown: {}, // district -> { collected, studying, notStudying, deceased }
+    generatedAt: new Date().toISOString(),
+  };
+  if (!sh) return summary;
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return summary;
+
+  const values = sh.getRange(2, 1, lastRow - 1, COLLECTION_HEADERS.length).getValues();
+  values.forEach(r => {
+    const pen = String(r[CCOL.PEN - 1] || '').trim();
+    if (!pen) return;
+    summary.collected++;
+
+    const district = String(r[1] || '').trim() || 'Unknown';
+    const status = String(r[CCOL.STATUS - 1] || '').trim();
+    const willing = String(r[CCOL.WILLING - 1] || '').trim();
+    const mode = String(r[CCOL.MODE - 1] || '').trim();
+    const reason = String(r[CCOL.REASON - 1] || '').trim();
+
+    const d = summary.districtBreakdown[district] ||
+      (summary.districtBreakdown[district] = { collected: 0, studying: 0, notStudying: 0, deceased: 0 });
+    d.collected++;
+
+    if (status === 'Studying') { summary.studying++; d.studying++; }
+    else if (status === 'Not Studying') {
+      summary.notStudying++; d.notStudying++;
+      if (willing === 'Yes') summary.willing++;
+      else if (willing === 'No') summary.unwilling++;
+      if (mode === 'Regular') summary.modeRegular++;
+      else if (mode === 'NIOS') summary.modeNios++;
+      if (reason) summary.reasonBreakdown[reason] = (summary.reasonBreakdown[reason] || 0) + 1;
+    } else if (status === 'Deceased') { summary.deceased++; d.deceased++; }
+  });
+
+  return summary;
 }
 
 function collectionSheet_() {
