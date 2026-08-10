@@ -81,8 +81,16 @@ function doPost(e) {
   }
 }
 
+// Memoized within a single execution — doGet used to call openById() up to
+// 3x per request (targetSheet_ from getSchools/getStudents, plus again from
+// collectionStatusByPen_), and opening an external (not container-bound)
+// spreadsheet by ID is the slow part, not the row scans. Cache the open
+// Spreadsheet object, and cache computed results across executions via
+// CacheService (6h TTL) since the target list barely changes.
+let _ssCache = null;
 function spreadsheet_() {
-  return SpreadsheetApp.openById(SHEET_ID);
+  if (!_ssCache) _ssCache = SpreadsheetApp.openById(SHEET_ID);
+  return _ssCache;
 }
 
 function targetSheet_() {
@@ -91,17 +99,31 @@ function targetSheet_() {
   return sh;
 }
 
+const CACHE_TTL_SECONDS = 21600; // 6 hours
+
 function getDistricts() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('districts_v1');
+  if (cached) return JSON.parse(cached);
+
   const sh = targetSheet_();
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
   const values = sh.getRange(2, COL.DISTRICT, lastRow - 1, 1).getValues();
   const set = new Set();
   values.forEach(r => { const v = String(r[0] || '').trim(); if (v) set.add(v); });
-  return Array.from(set).sort();
+  const result = Array.from(set).sort();
+
+  cache.put('districts_v1', JSON.stringify(result), CACHE_TTL_SECONDS);
+  return result;
 }
 
 function getSchools(district) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'schools_v1_' + district;
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
   const sh = targetSheet_();
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
@@ -117,7 +139,10 @@ function getSchools(district) {
     const key = udise + '||' + school;
     if (!seen.has(key)) seen.set(key, { udise, school, block });
   });
-  return Array.from(seen.values()).sort((a, b) => a.school.localeCompare(b.school));
+  const result = Array.from(seen.values()).sort((a, b) => a.school.localeCompare(b.school));
+
+  try { cache.put(cacheKey, JSON.stringify(result), CACHE_TTL_SECONDS); } catch (e) { /* too large, skip caching */ }
+  return result;
 }
 
 /** Map of PEN -> collection row data, for merging into the student list. */
@@ -143,43 +168,61 @@ function collectionStatusByPen_() {
 }
 
 /**
- * district: required. udise: optional ('' = all schools in district) —
- * the school's UDISE code, matched exactly (more reliable than school
- * name, which can repeat).
+ * Base student fields from the target list only (no live status) — this is
+ * the expensive part (scanning up to ~90k rows), so it's cached. Status is
+ * merged in separately by getStudents() on every call since it changes
+ * frequently and shouldn't sit behind a 6h cache.
  */
-function getStudents(district, udise) {
+function getStudentsBase_(district, udise) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'students_v1_' + district + '_' + (udise || '');
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
   const sh = targetSheet_();
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
   const width = COL.ACADEMIC_YEAR;
   const values = sh.getRange(2, 1, lastRow - 1, width).getValues();
-  const statusMap = collectionStatusByPen_();
 
   const out = [];
   values.forEach(r => {
     if (String(r[COL.DISTRICT - 1] || '').trim() !== district) return;
     if (udise && String(r[COL.UDISE - 1] || '').trim() !== udise) return;
-    const name = String(r[COL.STUDENT - 1] || '').trim();
-    const father = String(r[COL.FATHER - 1] || '').trim();
-
-    const pen = String(r[COL.PEN - 1] || '').trim();
-    const existing = statusMap[pen];
     out.push({
-      pen: pen,
-      name: name,
-      father: father,
+      pen: String(r[COL.PEN - 1] || '').trim(),
+      name: String(r[COL.STUDENT - 1] || '').trim(),
+      father: String(r[COL.FATHER - 1] || '').trim(),
       mobile: String(r[COL.MOBILE - 1] || '').trim(),
       block: String(r[COL.BLOCK - 1] || '').trim(),
       school: String(r[COL.SCHOOL - 1] || '').trim(),
       studentClass: String(r[COL.CLASS - 1] || '').trim(),
+    });
+  });
+  out.sort((a, b) => a.name.localeCompare(b.name));
+
+  try { cache.put(cacheKey, JSON.stringify(out), CACHE_TTL_SECONDS); } catch (e) { /* too large, skip caching */ }
+  return out;
+}
+
+/**
+ * district: required. udise: optional ('' = all schools in district) —
+ * the school's UDISE code, matched exactly (more reliable than school
+ * name, which can repeat).
+ */
+function getStudents(district, udise) {
+  const base = getStudentsBase_(district, udise);
+  const statusMap = collectionStatusByPen_();
+
+  return base.map(s => {
+    const existing = statusMap[s.pen];
+    return Object.assign({}, s, {
       currentStatus: existing ? existing.currentStatus : '',
       willing: existing ? existing.willing : '',
       mode: existing ? existing.mode : '',
       reason: existing ? existing.reason : '',
     });
   });
-  out.sort((a, b) => a.name.localeCompare(b.name));
-  return out;
 }
 
 /**
