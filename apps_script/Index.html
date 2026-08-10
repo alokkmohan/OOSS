@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --navy: #1c3866; --navy-dark: #142845; --green: #16a34a; --red: #dc2626;
+      --orange: #ea580c; --gray: #64748b; --bg: #f1f5f9; --card: #ffffff;
+      --border: rgba(15,23,42,0.1); --text: #0f172a; --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text); margin: 0; padding: 16px;
+    }
+    h1 { font-size: 1.3rem; margin: 0 0 4px; color: var(--navy); }
+    p.sub { color: var(--muted); margin: 0 0 16px; font-size: 0.85rem; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    }
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 160px; }
+    .field label { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+    select, input[type=text], textarea {
+      padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.9rem; background: #fff; color: var(--text); width: 100%;
+    }
+    button {
+      padding: 9px 16px; border: none; border-radius: 6px; font-size: 0.85rem;
+      font-weight: 600; cursor: pointer; background: var(--navy); color: #fff;
+    }
+    button:hover { background: var(--navy-dark); }
+    button.secondary { background: #e2e8f0; color: var(--text); }
+    button.secondary:hover { background: #cbd5e1; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #collectorRow { margin-bottom: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    thead th {
+      text-align: left; padding: 10px 8px; background: #f8fafc; color: var(--muted);
+      border-bottom: 1px solid var(--border); position: sticky; top: 0;
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    tbody td { padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:hover td { background: #f8fafc; }
+    .table-wrap { overflow-x: auto; max-height: 60vh; overflow-y: auto; }
+
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+    .badge-studying { background: rgba(22,163,74,0.12); color: #15803d; }
+    .badge-notstudying { background: rgba(234,88,12,0.12); color: #c2410c; }
+    .badge-deceased { background: rgba(220,38,38,0.12); color: #b91c1c; }
+    .badge-none { background: rgba(100,116,139,0.12); color: #475569; }
+
+    #status { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+    #status.error { color: var(--red); }
+    #status.ok { color: var(--green); }
+
+    /* Modal */
+    #overlay {
+      display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55);
+      align-items: center; justify-content: center; z-index: 50; padding: 16px;
+    }
+    #overlay.show { display: flex; }
+    #modal {
+      background: #fff; border-radius: 10px; padding: 20px; width: 100%; max-width: 440px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    #modal h2 { font-size: 1.05rem; margin: 0 0 2px; }
+    #modal .student-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 14px; }
+    .q-group { margin-bottom: 14px; }
+    .q-group > label.qlabel { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .radio-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .radio-opt {
+      border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px;
+      font-size: 0.82rem; cursor: pointer; user-select: none;
+    }
+    .radio-opt.selected { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .hidden { display: none !important; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    #modalError { color: var(--red); font-size: 0.8rem; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+  <h1>Out-of-School Student — Field Data Collection</h1>
+  <p class="sub">District चुनें, फिर list में से student का status भरें। दुबारा भरने पर पुराना entry update हो जाएगा।</p>
+
+  <div class="card" id="collectorRow">
+    <div class="filters">
+      <div class="field">
+        <label>Your Name / Designation (Collected By)</label>
+        <input type="text" id="collectedBy" placeholder="e.g. Ramesh Kumar, CRC Nakur">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="filters">
+      <div class="field">
+        <label>District *</label>
+        <select id="districtSelect"><option value="">Loading...</option></select>
+      </div>
+      <div class="field">
+        <label>School (optional)</label>
+        <select id="schoolSelect" disabled><option value="">All schools</option></select>
+      </div>
+      <div class="field">
+        <label>Search (name / father name)</label>
+        <input type="text" id="searchBox" placeholder="Type to filter...">
+      </div>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student Name</th><th>Father Name</th><th>Class</th>
+            <th>Mobile</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="6" style="color:var(--muted);padding:20px;text-align:center;">Select a district to load students.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div id="modal">
+      <h2 id="modalName"></h2>
+      <div class="student-meta" id="modalMeta"></div>
+
+      <div class="q-group">
+        <label class="qlabel">Is the student currently studying?</label>
+        <div class="radio-row" id="q1">
+          <div class="radio-opt" data-value="Studying">Studying</div>
+          <div class="radio-opt" data-value="Not Studying">Not Studying</div>
+          <div class="radio-opt" data-value="Deceased">Deceased</div>
+        </div>
+      </div>
+
+      <div class="q-group hidden" id="q2group">
+        <label class="qlabel">Is the student willing to study further?</label>
+        <div class="radio-row" id="q2">
+          <div class="radio-opt" data-value="Yes">Yes</div>
+          <div class="radio-opt" data-value="No">No</div>
+        </div>
+      </div>
+
+      <div class="q-group hidden" id="q3group">
+        <label class="qlabel">Mode of study</label>
+        <div class="radio-row" id="q3">
+          <div class="radio-opt" data-value="Regular">Regular School</div>
+          <div class="radio-opt" data-value="NIOS">NIOS (Open Schooling)</div>
+        </div>
+      </div>
+
+      <div class="q-group hidden" id="q4group">
+        <label class="qlabel">Reason for not studying</label>
+        <select id="reasonSelect">
+          <option value="">Select a reason...</option>
+          <option value="Marriage">Marriage</option>
+          <option value="Migrated for Labour/Work">Migrated for Labour/Work</option>
+          <option value="Financial Problem">Financial Problem</option>
+          <option value="Household / Domestic Responsibility">Household / Domestic Responsibility</option>
+          <option value="Health / Medical Reason">Health / Medical Reason</option>
+          <option value="Admission Not Taken / TC Issue">Admission Not Taken / TC Issue</option>
+          <option value="Not Interested">Not Interested</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="q-group">
+        <label class="qlabel">Remarks (optional)</label>
+        <textarea id="remarksBox" rows="2"></textarea>
+      </div>
+
+      <div id="modalError"></div>
+      <div class="modal-actions">
+        <button class="secondary" onclick="closeModal()">Cancel</button>
+        <button onclick="saveEntry()" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStudents = [];
+    let activeStudent = null;
+    let answers = { currentStatus: '', willing: '', mode: '', reason: '' };
+
+    function setStatus(msg, cls) {
+      const el = document.getElementById('status');
+      el.textContent = msg || '';
+      el.className = cls || '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      google.script.run.withSuccessHandler(populateDistricts).withFailureHandler(onError).getDistricts();
+    });
+
+    function populateDistricts(list) {
+      const sel = document.getElementById('districtSelect');
+      sel.innerHTML = '<option value="">Select district...</option>' +
+        list.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+    }
+
+    document.getElementById('districtSelect').addEventListener('change', function () {
+      const district = this.value;
+      const schoolSel = document.getElementById('schoolSelect');
+      schoolSel.innerHTML = '<option value="">All schools</option>';
+      schoolSel.disabled = !district;
+      renderTable([]);
+      if (!district) return;
+      setStatus('Loading schools...', '');
+      google.script.run.withSuccessHandler(list => {
+        schoolSel.innerHTML = '<option value="">All schools</option>' +
+          list.map(s => `<option value="${escapeHtml(s.school)}">${escapeHtml(s.school)} (${escapeHtml(s.block)})</option>`).join('');
+        setStatus('', '');
+      }).withFailureHandler(onError).getSchools(district);
+      loadStudents();
+    });
+
+    document.getElementById('schoolSelect').addEventListener('change', loadStudents);
+    let searchTimer = null;
+    document.getElementById('searchBox').addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadStudents, 400);
+    });
+
+    function loadStudents() {
+      const district = document.getElementById('districtSelect').value;
+      if (!district) return;
+      const school = document.getElementById('schoolSelect').value;
+      const search = document.getElementById('searchBox').value;
+      setStatus('Loading students...', '');
+      google.script.run.withSuccessHandler(list => {
+        currentStudents = list;
+        renderTable(list);
+        setStatus(`${list.length} student(s) found.`, '');
+      }).withFailureHandler(onError).getStudents(district, school, search);
+    }
+
+    function statusBadge(s) {
+      if (s === 'Studying') return '<span class="badge badge-studying">Studying</span>';
+      if (s === 'Not Studying') return '<span class="badge badge-notstudying">Not Studying</span>';
+      if (s === 'Deceased') return '<span class="badge badge-deceased">Deceased</span>';
+      return '<span class="badge badge-none">Not recorded</span>';
+    }
+
+    function renderTable(list) {
+      const tbody = document.getElementById('tbody');
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);padding:20px;text-align:center;">No students found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((s, i) => `
+        <tr>
+          <td>${escapeHtml(s.name)}</td>
+          <td>${escapeHtml(s.father)}</td>
+          <td>${escapeHtml(s.studentClass)}</td>
+          <td>${escapeHtml(s.mobile)}</td>
+          <td>${statusBadge(s.currentStatus)}</td>
+          <td><button onclick="openModal(${i})">Fill / Edit</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function openModal(index) {
+      activeStudent = currentStudents[index];
+      answers = {
+        currentStatus: activeStudent.currentStatus || '',
+        willing: activeStudent.willing || '',
+        mode: activeStudent.mode || '',
+        reason: activeStudent.reason || '',
+      };
+      document.getElementById('modalName').textContent = activeStudent.name;
+      document.getElementById('modalMeta').textContent =
+        `Father: ${activeStudent.father} | Class: ${activeStudent.studentClass} | PEN: ${activeStudent.pen} | ${activeStudent.school}`;
+      document.getElementById('remarksBox').value = '';
+      document.getElementById('reasonSelect').value = answers.reason;
+      document.getElementById('modalError').textContent = '';
+      refreshRadios();
+      document.getElementById('overlay').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('overlay').classList.remove('show');
+      activeStudent = null;
+    }
+
+    function refreshRadios() {
+      setRadioGroup('q1', answers.currentStatus, (val) => {
+        answers.currentStatus = val;
+        answers.willing = ''; answers.mode = ''; answers.reason = '';
+        document.getElementById('q2group').classList.toggle('hidden', val !== 'Not Studying');
+        document.getElementById('q3group').classList.add('hidden');
+        document.getElementById('q4group').classList.add('hidden');
+        refreshRadios();
+      });
+      setRadioGroup('q2', answers.willing, (val) => {
+        answers.willing = val;
+        document.getElementById('q3group').classList.toggle('hidden', val !== 'Yes');
+        document.getElementById('q4group').classList.toggle('hidden', val !== 'No');
+        refreshRadios();
+      });
+      setRadioGroup('q3', answers.mode, (val) => { answers.mode = val; refreshRadios(); });
+
+      document.getElementById('q2group').classList.toggle('hidden', answers.currentStatus !== 'Not Studying');
+      document.getElementById('q3group').classList.toggle('hidden', answers.willing !== 'Yes');
+      document.getElementById('q4group').classList.toggle('hidden', answers.willing !== 'No');
+    }
+
+    function setRadioGroup(groupId, selectedValue, onPick) {
+      const group = document.getElementById(groupId);
+      Array.from(group.children).forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.value === selectedValue);
+        opt.onclick = () => onPick(opt.dataset.value);
+      });
+    }
+
+    document.getElementById('reasonSelect').addEventListener('change', function () {
+      answers.reason = this.value;
+    });
+
+    function saveEntry() {
+      if (!activeStudent) return;
+      if (!answers.currentStatus) {
+        document.getElementById('modalError').textContent = 'Please select whether the student is currently studying.';
+        return;
+      }
+      if (answers.currentStatus === 'Not Studying' && !answers.willing) {
+        document.getElementById('modalError').textContent = 'Please answer whether the student is willing to study further.';
+        return;
+      }
+      if (answers.willing === 'Yes' && !answers.mode) {
+        document.getElementById('modalError').textContent = 'Please select mode of study (Regular / NIOS).';
+        return;
+      }
+      if (answers.willing === 'No' && !answers.reason) {
+        document.getElementById('modalError').textContent = 'Please select a reason.';
+        return;
+      }
+      document.getElementById('modalError').textContent = '';
+
+      const payload = {
+        district: document.getElementById('districtSelect').value,
+        block: activeStudent.block,
+        school: activeStudent.school,
+        pen: activeStudent.pen,
+        studentName: activeStudent.name,
+        fatherName: activeStudent.father,
+        mobile: activeStudent.mobile,
+        studentClass: activeStudent.studentClass,
+        currentStatus: answers.currentStatus,
+        willing: answers.currentStatus === 'Not Studying' ? answers.willing : '',
+        mode: answers.mode,
+        reason: answers.reason,
+        collectedBy: document.getElementById('collectedBy').value,
+        remarks: document.getElementById('remarksBox').value,
+      };
+
+      document.getElementById('saveBtn').disabled = true;
+      google.script.run
+        .withSuccessHandler(() => {
+          document.getElementById('saveBtn').disabled = false;
+          closeModal();
+          loadStudents();
+        })
+        .withFailureHandler(err => {
+          document.getElementById('saveBtn').disabled = false;
+          document.getElementById('modalError').textContent = err.message || String(err);
+        })
+        .submitEntry(payload);
+    }
+
+    function onError(err) {
+      setStatus(err.message || String(err), 'error');
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+  </script>
+</body>
+</html>

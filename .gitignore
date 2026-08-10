@@ -6,4 +6,5 @@ __pycache__/
 # Contains raw student PII (names, mobile numbers, addresses) — never push
 # these to a public repo.
 *.xlsx
+*.csv
 dashboard_data.json
