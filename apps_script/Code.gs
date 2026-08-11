@@ -31,13 +31,14 @@ const COL = {
 };
 
 const COLLECTION_HEADERS = [
-  'Student PEN', 'District Name', 'Block Name', 'School Name',
-  'Student Name', 'Father Name', 'Mobile No.', 'Class',
+  'Student PEN', 'District Name', 'Block Name', 'Last UDISE Code', 'Last School Name',
+  'Student Name', 'Sex', 'Mobile No', 'Mother Name', 'Father Name',
+  'Student Sub Status', 'Last Class', 'Eligible Class to Import', 'Academic Year',
   'Current Status', 'Willing to Resume Studies', 'Mode (Regular/NIOS)',
   'Reason', 'Collected By', 'Remarks', 'Last Updated',
 ];
 // Column indices (1-indexed) within COLLECTION_HEADERS, for readability.
-const CCOL = { PEN: 1, STATUS: 9, WILLING: 10, MODE: 11, REASON: 12, UPDATED: 15 };
+const CCOL = { PEN: 1, STATUS: 15, WILLING: 16, MODE: 17, REASON: 18, UPDATED: 21 };
 
 /**
  * This is a pure JSON API — the actual form UI is hosted separately on
@@ -49,6 +50,8 @@ const CCOL = { PEN: 1, STATUS: 9, WILLING: 10, MODE: 11, REASON: 12, UPDATED: 15
  * GET  ?action=districts
  * GET  ?action=schools&district=...
  * GET  ?action=students&district=...&udise=...   (udise optional)
+ * GET  ?action=studentCount
+ * GET  ?action=allStudentsChunk&offset=N&limit=M   (see getAllStudentsChunk)
  * GET  ?action=summary                             (for the /dashboard/ page)
  * POST { action: 'submit', payload: {...} }        (body as text/plain JSON,
  *        see submitEntry() for payload shape — avoids a CORS preflight)
@@ -64,6 +67,12 @@ function doGet(e) {
     if (action === 'districts') return jsonOutput_({ ok: true, data: getDistricts() });
     if (action === 'schools') return jsonOutput_({ ok: true, data: getSchools(e.parameter.district) });
     if (action === 'students') return jsonOutput_({ ok: true, data: getStudents(e.parameter.district, e.parameter.udise || '') });
+    if (action === 'studentCount') return jsonOutput_({ ok: true, data: getStudentCount() });
+    if (action === 'allStudentsChunk') {
+      const offset = parseInt(e.parameter.offset, 10) || 0;
+      const limit = parseInt(e.parameter.limit, 10) || 10000;
+      return jsonOutput_({ ok: true, data: getAllStudentsChunk(offset, limit) });
+    }
     if (action === 'summary') return jsonOutput_({ ok: true, data: getSummary() });
     return jsonOutput_({ ok: false, error: 'Unknown or missing action.' });
   } catch (err) {
@@ -206,6 +215,55 @@ function getStudentsBase_(district, udise) {
 }
 
 /**
+ * Full target list (all 75 districts, ~90k rows, every column) + live
+ * status merged in — fetched by the /collect/ page in CHUNKS on load (one
+ * request for ~90k rows was taking 2+ minutes and timing out; chunking
+ * keeps each request's sheet-read + serialization small and fast), then
+ * filtered entirely client-side afterward (no per-district/school round
+ * trip). offset/limit are 0-indexed into the data rows (excluding header).
+ */
+function getStudentCount() {
+  const sh = targetSheet_();
+  return Math.max(sh.getLastRow() - 1, 0);
+}
+
+function getAllStudentsChunk(offset, limit) {
+  const sh = targetSheet_();
+  const total = Math.max(sh.getLastRow() - 1, 0);
+  const start = Math.max(offset, 0);
+  if (start >= total) return [];
+  const count = Math.min(limit, total - start);
+  const width = COL.ACADEMIC_YEAR;
+  const values = sh.getRange(2 + start, 1, count, width).getValues();
+  const statusMap = collectionStatusByPen_();
+
+  return values.map(r => {
+    const pen = String(r[COL.PEN - 1] || '').trim();
+    const existing = statusMap[pen];
+    return {
+      district: String(r[COL.DISTRICT - 1] || '').trim(),
+      block: String(r[COL.BLOCK - 1] || '').trim(),
+      udise: String(r[COL.UDISE - 1] || '').trim(),
+      school: String(r[COL.SCHOOL - 1] || '').trim(),
+      pen: pen,
+      name: String(r[COL.STUDENT - 1] || '').trim(),
+      sex: String(r[COL.GENDER - 1] || '').trim(),
+      mobile: String(r[COL.MOBILE - 1] || '').trim(),
+      mother: String(r[COL.MOTHER - 1] || '').trim(),
+      father: String(r[COL.FATHER - 1] || '').trim(),
+      subStatus: String(r[COL.SUB_STATUS - 1] || '').trim(),
+      studentClass: String(r[COL.CLASS - 1] || '').trim(),
+      eligibleClass: String(r[COL.ELIGIBLE_CLASS - 1] || '').trim(),
+      academicYear: String(r[COL.ACADEMIC_YEAR - 1] || '').trim(),
+      currentStatus: existing ? existing.currentStatus : '',
+      willing: existing ? existing.willing : '',
+      mode: existing ? existing.mode : '',
+      reason: existing ? existing.reason : '',
+    };
+  });
+}
+
+/**
  * district: required. udise: optional ('' = all schools in district) —
  * the school's UDISE code, matched exactly (more reliable than school
  * name, which can repeat).
@@ -310,9 +368,12 @@ function findRowByPen_(sh, pen) {
 }
 
 /**
- * payload: { district, block, school, pen, studentName, fatherName,
- *   mobile, studentClass, currentStatus, willing, mode, reason,
- *   collectedBy, remarks }
+ * payload: { district, block, udise, school, pen, studentName, sex, mobile,
+ *   motherName, fatherName, subStatus, studentClass, eligibleClass,
+ *   academicYear, currentStatus, willing, mode, reason, collectedBy,
+ *   remarks } — every target-list field carried forward plus the status
+ * answers, so the Field Data Collection tab is self-contained (no need to
+ * cross-reference the raw target list to see who a row is about).
  * Upserts by PEN — re-submitting for the same student updates the
  * existing row instead of appending a duplicate.
  */
@@ -329,9 +390,10 @@ function submitEntry(payload) {
 
   const sh = collectionSheet_();
   const rowValues = [
-    payload.pen, payload.district || '', payload.block || '', payload.school || '',
-    payload.studentName || '', payload.fatherName || '', payload.mobile || '',
-    payload.studentClass || '', payload.currentStatus || '', payload.willing || '',
+    payload.pen, payload.district || '', payload.block || '', payload.udise || '', payload.school || '',
+    payload.studentName || '', payload.sex || '', payload.mobile || '', payload.motherName || '', payload.fatherName || '',
+    payload.subStatus || '', payload.studentClass || '', payload.eligibleClass || '', payload.academicYear || '',
+    payload.currentStatus || '', payload.willing || '',
     payload.mode || '', payload.reason || '', payload.collectedBy || '',
     payload.remarks || '', new Date(),
   ];
