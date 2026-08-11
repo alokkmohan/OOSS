@@ -233,11 +233,45 @@
       return body;
     }
 
+    const CHUNK_SIZE = 4000;
+    const PARALLEL_REQUESTS = 6; // Apps Script's per-user concurrent execution limit is well above this
+
+    async function fetchChunk(offset, limit) {
+      const res = await fetch(API_URL + `?action=allStudentsChunk&offset=${offset}&limit=${limit}`);
+      const body = await res.json();
+      if (!body.ok) throw new Error(body.error || 'Failed to load a chunk of the student list');
+      return { offset, data: body.data };
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        document.getElementById('loadingText').textContent = 'Loading student list...';
-        const res = await fetch('./students.json');
-        allStudents = await res.json();
+        const countRes = await fetch(API_URL + '?action=studentCount');
+        const countBody = await countRes.json();
+        if (!countBody.ok) throw new Error(countBody.error || 'Failed to load student count');
+        const total = countBody.data;
+
+        const offsets = [];
+        for (let offset = 0; offset < total; offset += CHUNK_SIZE) offsets.push(offset);
+        const results = new Array(offsets.length);
+        let done = 0;
+
+        // Bounded-concurrency pool — fires PARALLEL_REQUESTS chunk fetches
+        // at once instead of one massive/slow single request or a fully
+        // serial chain of small ones.
+        let nextIndex = 0;
+        async function worker() {
+          while (nextIndex < offsets.length) {
+            const i = nextIndex++;
+            const { data } = await fetchChunk(offsets[i], CHUNK_SIZE);
+            results[i] = data;
+            done++;
+            document.getElementById('loadingText').textContent =
+              `Loading student list — ${Math.min(done * CHUNK_SIZE, total).toLocaleString()} / ${total.toLocaleString()}...`;
+          }
+        }
+        await Promise.all(Array.from({ length: PARALLEL_REQUESTS }, worker));
+
+        allStudents = [].concat(...results);
 
         const districts = Array.from(new Set(allStudents.map(s => s.district))).sort();
         document.getElementById('districtSelect').innerHTML =
