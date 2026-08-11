@@ -41,7 +41,7 @@ Table mein District/School ke hisaab se filtered students dikhte hain, columns:
 | → स्थिति | **Yahan status bharo/update karo** |
 
 Agar student ka status pehle se bhara hai, badge dikhega (Studying / Not
-Studying / Deceased). Nahi bhara to "Not recorded" dikhega.
+Studying / Death). Nahi bhara to "Not recorded" dikhega.
 
 ## Step 5 — Status bharna (last column ka button "वर्तमान स्थिति")
 
@@ -51,7 +51,7 @@ Button click karne par ek popup khulta hai jisme decision-tree jaisa flow hai:
 
 - **पढ़ रहा है (Studying)** → seedha Save kar sakte ho, koi aur sawaal nahi.
 - **नहीं पढ़ रहा है (Not Studying)** → Q2 khulta hai.
-- **मृत्यु हो गई (Deceased)** → seedha Save kar sakte ho.
+- **मृत्यु हो गई (Death)** → seedha Save kar sakte ho.
 
 ### Q2 (sirf "Not Studying" par): क्या छात्र आगे पढ़ने के लिए इच्छुक है?
 

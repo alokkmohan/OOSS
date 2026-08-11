@@ -338,7 +338,7 @@ function getSummary() {
       if (mode === 'Regular') summary.modeRegular++;
       else if (mode === 'NIOS') summary.modeNios++;
       if (reason) summary.reasonBreakdown[reason] = (summary.reasonBreakdown[reason] || 0) + 1;
-    } else if (status === 'Deceased') { summary.deceased++; d.deceased++; }
+    } else if (status === 'Death') { summary.deceased++; d.deceased++; }
   });
 
   return summary;

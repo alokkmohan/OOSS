@@ -120,7 +120,7 @@
       <div class="kpi-sub" id="kpiNotStudyingSub"></div>
     </div>
     <div class="kpi-card red">
-      <div class="kpi-label">Deceased</div>
+      <div class="kpi-label">Death</div>
       <div class="kpi-value" id="kpiDeceased">—</div>
       <div class="kpi-sub"></div>
     </div>
@@ -150,7 +150,7 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>District</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Deceased</th></tr>
+          <tr><th>District</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Death</th></tr>
         </thead>
         <tbody id="districtBody"></tbody>
       </table>
@@ -190,7 +190,7 @@
       new Chart(document.getElementById('chartStatus'), {
         type: 'doughnut',
         data: {
-          labels: ['Studying', 'Not Studying', 'Deceased'],
+          labels: ['Studying', 'Not Studying', 'Death'],
           datasets: [{ data: [s.studying, s.notStudying, s.deceased],
             backgroundColor: [COLORS.green, COLORS.orange, COLORS.red], borderWidth: 0 }],
         },
