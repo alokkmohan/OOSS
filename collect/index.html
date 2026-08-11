@@ -40,6 +40,10 @@
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
+    .col-school {
+      max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    td.col-school { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     thead th {
       text-align: left; padding: 10px 8px; background: #f8fafc; color: var(--muted);
       border-bottom: 1px solid var(--border); position: sticky; top: 0;
@@ -133,15 +137,15 @@
       <table>
         <thead>
           <tr>
-            <th>Block Name</th><th>UDISE Code</th><th>School Name</th>
+            <th>Block Name</th><th>UDISE Code</th><th class="col-school">School Name</th>
             <th>Student PEN</th><th>Student Name</th><th>Sex</th><th>Mobile No</th>
-            <th>Mother Name</th><th>Father Name</th><th>Sub Status</th>
-            <th>Class</th><th>Eligible Class</th><th>Academic Year</th>
-            <th>Status</th><th></th>
+            <th>Mother Name</th><th>Father Name</th>
+            <th>Class</th>
+            <th>→ स्थिति</th><th></th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="15" style="color:var(--muted);padding:20px;text-align:center;">Select a district to load students.</td></tr>
+          <tr><td colspan="12" style="color:var(--muted);padding:20px;text-align:center;">Select a district to load students.</td></tr>
         </tbody>
       </table>
     </div>
@@ -324,26 +328,23 @@
     function renderTable(list) {
       const tbody = document.getElementById('tbody');
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="15" style="color:var(--muted);padding:20px;text-align:center;">No students found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="color:var(--muted);padding:20px;text-align:center;">No students found.</td></tr>';
         return;
       }
       tbody.innerHTML = list.map((s, i) => `
         <tr>
           <td>${escapeHtml(s.block)}</td>
           <td>${escapeHtml(s.udise)}</td>
-          <td>${escapeHtml(s.school)}</td>
+          <td class="col-school" title="${escapeHtml(s.school)}">${escapeHtml(s.school)}</td>
           <td>${escapeHtml(s.pen)}</td>
           <td>${escapeHtml(s.name)}</td>
           <td>${escapeHtml(s.sex)}</td>
           <td>${escapeHtml(s.mobile)}</td>
           <td>${escapeHtml(s.mother)}</td>
           <td>${escapeHtml(s.father)}</td>
-          <td>${escapeHtml(s.subStatus)}</td>
           <td>${escapeHtml(s.studentClass)}</td>
-          <td>${escapeHtml(s.eligibleClass)}</td>
-          <td>${escapeHtml(s.academicYear)}</td>
           <td>${statusBadge(s.currentStatus)}</td>
-          <td><button onclick="openModal(${i})">Fill / Edit</button></td>
+          <td><button onclick="openModal(${i})">वर्तमान स्थिति</button></td>
         </tr>
       `).join('');
     }
