@@ -225,7 +225,7 @@
     // Bump if the Apps Script deployment is ever recreated (new deployment
     // = new URL). This page's own URL (ooss.dataimpact.in/collect/) never
     // changes for field coordinators even if this does.
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwluDcV6R4wBoLyxUnoUQQY7LkSjiXjsfIpfXMMwHW6oS6ggbAcizq5V7q3PFEyZNodbg/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzHLWqqcfcuNwnIHpVqSLfyuywEFhi-n2UEGqzb5XlWpVo7I0D6RWHZz-UNicFPLZErtw/exec';
 
     let allStudents = [];       // full dataset, loaded once
     let currentStudents = [];   // filtered view for the current district/school
@@ -238,32 +238,52 @@
       el.className = cls || '';
     }
 
+    // Apps Script Web Apps occasionally return an HTML "access denied"/
+    // sign-in interstitial instead of JSON for no clear reason — a retry
+    // almost always succeeds. Wrap every call in a few retries with a
+    // short backoff before actually surfacing an error to the user.
+    async function fetchJsonWithRetry(url, options, retries) {
+      retries = retries === undefined ? 3 : retries;
+      let lastErr;
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const res = await fetch(url, options);
+          const text = await res.text();
+          let body;
+          try {
+            body = JSON.parse(text);
+          } catch (e) {
+            throw new Error('अस्थायी सर्वर त्रुटि (server ने JSON की जगह कुछ और भेजा)');
+          }
+          if (!body.ok) throw new Error(body.error || 'Request failed');
+          return body;
+        } catch (err) {
+          lastErr = err;
+          if (attempt < retries) await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+        }
+      }
+      throw lastErr;
+    }
+
     async function apiPost(action, payload) {
-      const res = await fetch(API_URL, {
+      return fetchJsonWithRetry(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
         body: JSON.stringify({ action, payload }),
       });
-      const body = await res.json();
-      if (!body.ok) throw new Error(body.error || 'Request failed');
-      return body;
     }
 
     const CHUNK_SIZE = 4000;
     const PARALLEL_REQUESTS = 6; // Apps Script's per-user concurrent execution limit is well above this
 
     async function fetchChunk(offset, limit) {
-      const res = await fetch(API_URL + `?action=allStudentsChunk&offset=${offset}&limit=${limit}`);
-      const body = await res.json();
-      if (!body.ok) throw new Error(body.error || 'Failed to load a chunk of the student list');
+      const body = await fetchJsonWithRetry(API_URL + `?action=allStudentsChunk&offset=${offset}&limit=${limit}`);
       return { offset, data: body.data };
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        const countRes = await fetch(API_URL + '?action=studentCount');
-        const countBody = await countRes.json();
-        if (!countBody.ok) throw new Error(countBody.error || 'Failed to load student count');
+        const countBody = await fetchJsonWithRetry(API_URL + '?action=studentCount');
         const total = countBody.data;
 
         const offsets = [];

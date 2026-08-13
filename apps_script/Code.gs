@@ -354,8 +354,17 @@ function getSummary() {
 function collectionSheet_() {
   const ss = spreadsheet_();
   let sh = ss.getSheetByName(COLLECTION_TAB);
-  if (!sh) {
-    sh = ss.insertSheet(COLLECTION_TAB);
+  const isNew = !sh;
+  if (isNew) sh = ss.insertSheet(COLLECTION_TAB);
+
+  // Re-check the header row every time, not just on first creation — the
+  // column layout has changed a few times as fields got added, and a sheet
+  // created under an older layout would otherwise keep stale/misaligned
+  // headers forever while new rows follow the current COLLECTION_HEADERS
+  // order underneath them.
+  const currentHeaders = sh.getRange(1, 1, 1, COLLECTION_HEADERS.length).getValues()[0];
+  const headersMatch = COLLECTION_HEADERS.every((h, i) => currentHeaders[i] === h);
+  if (isNew || !headersMatch) {
     sh.getRange(1, 1, 1, COLLECTION_HEADERS.length).setValues([COLLECTION_HEADERS]);
     sh.getRange(1, 1, 1, COLLECTION_HEADERS.length)
       .setBackground('#1c3866').setFontColor('#ffffff').setFontWeight('bold');
