@@ -40,6 +40,14 @@
     button.secondary { background: #e2e8f0; color: var(--text); }
     button.secondary:hover { background: #cbd5e1; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-spinner {
+      display: inline-block; width: 13px; height: 13px; margin-right: 6px;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+      border-radius: 50%; vertical-align: -2px;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #saveBtn.success { background: var(--green); }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
     .col-school {
@@ -366,6 +374,10 @@
         `पिता: ${activeStudent.father} | कक्षा: ${activeStudent.studentClass} | PEN: ${activeStudent.pen} | ${activeStudent.school}`;
       document.getElementById('remarksBox').value = '';
       document.getElementById('reasonSelect').value = answers.reason;
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = false;
+      saveBtn.classList.remove('success');
+      saveBtn.textContent = 'सहेजें';
       document.getElementById('modalError').textContent = '';
       refreshRadios();
       document.getElementById('overlay').classList.add('show');
@@ -448,7 +460,10 @@
         remarks: document.getElementById('remarksBox').value,
       };
 
-      document.getElementById('saveBtn').disabled = true;
+      const saveBtn = document.getElementById('saveBtn');
+      const originalLabel = 'सहेजें';
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="btn-spinner"></span>सहेजा जा रहा है...';
       try {
         await apiPost('submit', payload);
         // Reflect the save immediately in the in-memory dataset too, so the
@@ -457,11 +472,19 @@
         activeStudent.willing = payload.willing;
         activeStudent.mode = answers.mode;
         activeStudent.reason = answers.reason;
-        document.getElementById('saveBtn').disabled = false;
-        closeModal();
         renderTable(currentStudents);
+
+        saveBtn.classList.add('success');
+        saveBtn.textContent = '✓ सहेजा गया';
+        setTimeout(() => {
+          saveBtn.classList.remove('success');
+          saveBtn.textContent = originalLabel;
+          saveBtn.disabled = false;
+          closeModal();
+        }, 700);
       } catch (err) {
-        document.getElementById('saveBtn').disabled = false;
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalLabel;
         document.getElementById('modalError').textContent = err.message || String(err);
       }
     }
