@@ -165,7 +165,6 @@
         <div class="radio-row" id="q1">
           <div class="radio-opt" data-value="Studying">पढ़ रहा है</div>
           <div class="radio-opt" data-value="Not Studying">नहीं पढ़ रहा है</div>
-          <div class="radio-opt" data-value="Death">मृत्यु हो गई</div>
         </div>
       </div>
 
@@ -196,6 +195,7 @@
           <option value="Health / Medical Reason">स्वास्थ्य/चिकित्सा कारण</option>
           <option value="Admission Not Taken / TC Issue">प्रवेश नहीं लिया / टीसी समस्या</option>
           <option value="Not Interested">रुचि नहीं है</option>
+          <option value="Death">मृत्यु हो गई</option>
           <option value="Other">अन्य</option>
         </select>
       </div>
@@ -322,10 +322,10 @@
       setStatus(`${currentStudents.length} student(s) found.`, '');
     }
 
-    function statusBadge(s) {
-      if (s === 'Studying') return '<span class="badge badge-studying">Studying</span>';
-      if (s === 'Not Studying') return '<span class="badge badge-notstudying">Not Studying</span>';
-      if (s === 'Death') return '<span class="badge badge-deceased">Death</span>';
+    function statusBadge(status, reason) {
+      if (reason === 'Death') return '<span class="badge badge-deceased">Death</span>';
+      if (status === 'Studying') return '<span class="badge badge-studying">Studying</span>';
+      if (status === 'Not Studying') return '<span class="badge badge-notstudying">Not Studying</span>';
       return '<span class="badge badge-none">Not recorded</span>';
     }
 
@@ -347,7 +347,7 @@
           <td>${escapeHtml(s.mother)}</td>
           <td>${escapeHtml(s.father)}</td>
           <td>${escapeHtml(s.studentClass)}</td>
-          <td>${statusBadge(s.currentStatus)}</td>
+          <td>${statusBadge(s.currentStatus, s.reason)}</td>
           <td><button onclick="openModal(${i})">वर्तमान स्थिति</button></td>
         </tr>
       `).join('');

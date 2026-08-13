@@ -41,7 +41,8 @@ Table mein District/School ke hisaab se filtered students dikhte hain, columns:
 | → स्थिति | **Yahan status bharo/update karo** |
 
 Agar student ka status pehle se bhara hai, badge dikhega (Studying / Not
-Studying / Death). Nahi bhara to "Not recorded" dikhega.
+Studying / Death — Death tab dikhta hai jab reason "मृत्यु हो गई" chuna gaya
+ho). Nahi bhara to "Not recorded" dikhega.
 
 ## Step 5 — Status bharna (last column ka button "वर्तमान स्थिति")
 
@@ -51,7 +52,6 @@ Button click karne par ek popup khulta hai jisme decision-tree jaisa flow hai:
 
 - **पढ़ रहा है (Studying)** → seedha Save kar sakte ho, koi aur sawaal nahi.
 - **नहीं पढ़ रहा है (Not Studying)** → Q2 khulta hai.
-- **मृत्यु हो गई (Death)** → seedha Save kar sakte ho.
 
 ### Q2 (sirf "Not Studying" par): क्या छात्र आगे पढ़ने के लिए इच्छुक है?
 
@@ -61,7 +61,7 @@ Button click karne par ek popup khulta hai jisme decision-tree jaisa flow hai:
 ### Q3 (sirf "हाँ" par): अध्ययन का माध्यम
 
 - **नियमित विद्यालय (Regular)**
-- **NIOS (मुक्त विद्यालय)**
+- **NIOS (मुक्त विद्यालय, घर बैठे शिक्षा)**
 
 ### Q4 (sirf "नहीं" par): न पढ़ने का कारण (dropdown)
 
@@ -72,6 +72,9 @@ Button click karne par ek popup khulta hai jisme decision-tree jaisa flow hai:
 - स्वास्थ्य/चिकित्सा कारण (Health / Medical Reason)
 - प्रवेश नहीं लिया / टीसी समस्या (Admission Not Taken / TC Issue)
 - रुचि नहीं है (Not Interested)
+- **मृत्यु हो गई (Death)** — status khud "Not Studying" hi rehta hai, isko
+  reason ke roop mein record kiya jaata hai; dashboard isko alag se
+  "Death" KPI mein count karta hai, notStudying mein nahi.
 - अन्य (Other)
 
 ### टिप्पणी (Remarks) — Optional
@@ -95,13 +98,13 @@ District (required)
             └─ "वर्तमान स्थिति" button click
                  └─ Q1: क्या छात्र वर्तमान में पढ़ रहा है?
                       ├─ पढ़ रहा है ────────────────────────► Save
-                      ├─ मृत्यु हो गई ──────────────────────► Save
                       └─ नहीं पढ़ रहा है
                            └─ Q2: आगे पढ़ने के लिए इच्छुक?
                                 ├─ हाँ
                                 │   └─ Q3: माध्यम (Regular/NIOS) ► Save
                                 └─ नहीं
-                                    └─ Q4: कारण (dropdown) ──► Save
+                                    └─ Q4: कारण (dropdown, "मृत्यु हो गई"
+                                            samet) ──────────► Save
 ```
 
 ---

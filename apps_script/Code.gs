@@ -332,13 +332,20 @@ function getSummary() {
 
     if (status === 'Studying') { summary.studying++; d.studying++; }
     else if (status === 'Not Studying') {
-      summary.notStudying++; d.notStudying++;
-      if (willing === 'Yes') summary.willing++;
-      else if (willing === 'No') summary.unwilling++;
-      if (mode === 'Regular') summary.modeRegular++;
-      else if (mode === 'NIOS') summary.modeNios++;
+      // Death is recorded as a Q4 reason (not its own top-level status) —
+      // pull it into the deceased bucket instead of notStudying, same
+      // overlay convention the classification side of this project uses.
+      if (reason === 'Death') {
+        summary.deceased++; d.deceased++;
+      } else {
+        summary.notStudying++; d.notStudying++;
+        if (willing === 'Yes') summary.willing++;
+        else if (willing === 'No') summary.unwilling++;
+        if (mode === 'Regular') summary.modeRegular++;
+        else if (mode === 'NIOS') summary.modeNios++;
+      }
       if (reason) summary.reasonBreakdown[reason] = (summary.reasonBreakdown[reason] || 0) + 1;
-    } else if (status === 'Death') { summary.deceased++; d.deceased++; }
+    }
   });
 
   return summary;
