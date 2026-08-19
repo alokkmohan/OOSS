@@ -184,7 +184,7 @@ function collectionStatusByPen_() {
  */
 function getStudentsBase_(district, udise) {
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'students_v1_' + district + '_' + (udise || '');
+  const cacheKey = 'students_v2_' + district + '_' + (udise || '');
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 

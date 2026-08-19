@@ -469,7 +469,7 @@
       document.getElementById('modalError').textContent = '';
 
       const payload = {
-        district: activeStudent.district,
+        district: activeStudent.district || document.getElementById('districtSelect').value,
         block: activeStudent.block,
         udise: activeStudent.udise,
         school: activeStudent.school,
