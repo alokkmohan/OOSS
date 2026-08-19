@@ -50,8 +50,6 @@ const CCOL = { PEN: 1, STATUS: 15, WILLING: 16, MODE: 17, REASON: 18, UPDATED: 2
  * GET  ?action=districts
  * GET  ?action=schools&district=...
  * GET  ?action=students&district=...&udise=...   (udise optional)
- * GET  ?action=collectionStatus                   (PEN -> {currentStatus,willing,mode,reason},
- *        for the static /collect/data/*.json page — small/fast, merged client-side)
  * GET  ?action=studentCount
  * GET  ?action=allStudentsChunk&offset=N&limit=M   (see getAllStudentsChunk)
  * GET  ?action=summary                             (for the /dashboard/ page)
@@ -69,7 +67,6 @@ function doGet(e) {
     if (action === 'districts') return jsonOutput_({ ok: true, data: getDistricts() });
     if (action === 'schools') return jsonOutput_({ ok: true, data: getSchools(e.parameter.district) });
     if (action === 'students') return jsonOutput_({ ok: true, data: getStudents(e.parameter.district, e.parameter.udise || '') });
-    if (action === 'collectionStatus') return jsonOutput_({ ok: true, data: collectionStatusByPen_() });
     if (action === 'studentCount') return jsonOutput_({ ok: true, data: getStudentCount() });
     if (action === 'allStudentsChunk') {
       const offset = parseInt(e.parameter.offset, 10) || 0;
@@ -187,9 +184,7 @@ function collectionStatusByPen_() {
  */
 function getStudentsBase_(district, udise) {
   const cache = CacheService.getScriptCache();
-  // v2: added udise/sex/mother, which the /collect/ table needs now that
-  // it loads per-district instead of the old all-90k-upfront chunk fetch.
-  const cacheKey = 'students_v2_' + district + '_' + (udise || '');
+  const cacheKey = 'students_v1_' + district + '_' + (udise || '');
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -207,11 +202,8 @@ function getStudentsBase_(district, udise) {
       pen: String(r[COL.PEN - 1] || '').trim(),
       name: String(r[COL.STUDENT - 1] || '').trim(),
       father: String(r[COL.FATHER - 1] || '').trim(),
-      mother: String(r[COL.MOTHER - 1] || '').trim(),
-      sex: String(r[COL.GENDER - 1] || '').trim(),
       mobile: String(r[COL.MOBILE - 1] || '').trim(),
       block: String(r[COL.BLOCK - 1] || '').trim(),
-      udise: String(r[COL.UDISE - 1] || '').trim(),
       school: String(r[COL.SCHOOL - 1] || '').trim(),
       studentClass: String(r[COL.CLASS - 1] || '').trim(),
     });

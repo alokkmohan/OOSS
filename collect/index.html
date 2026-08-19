@@ -111,7 +111,7 @@
 
   <div id="loadingOverlay">
     <div class="spinner"></div>
-    <div id="loadingText">Loading districts…</div>
+    <div id="loadingText">Loading student list (one-time load, then instant)…</div>
   </div>
 
   <div class="page-header">
@@ -227,8 +227,8 @@
     // changes for field coordinators even if this does.
     const API_URL = 'https://script.google.com/macros/s/AKfycbzHLWqqcfcuNwnIHpVqSLfyuywEFhi-n2UEGqzb5XlWpVo7I0D6RWHZz-UNicFPLZErtw/exec';
 
-    let currentStudents = [];   // rows for the currently selected district/school
-    let districtStudentsCache = {}; // district -> full student list, cached client-side per page load
+    let allStudents = [];       // full dataset, loaded once
+    let currentStudents = [];   // filtered view for the current district/school
     let activeStudent = null;
     let answers = { currentStatus: '', willing: '', mode: '', reason: '' };
 
@@ -273,74 +273,79 @@
       });
     }
 
-    // Districts load fast (a few dozen names, 6h-cached server-side) — no
-    // more pulling all ~90k student rows before the page is usable. The
-    // full per-student list is only fetched once a district is actually
-    // picked, and only for that district (also 6h-cached server-side, so
-    // repeat visits to the same district are instant regardless of net
-    // speed). This replaces the old "load everything upfront in chunks"
-    // approach, which could take minutes on a slow connection before the
-    // district dropdown even appeared.
+    const CHUNK_SIZE = 4000;
+    const PARALLEL_REQUESTS = 6; // Apps Script's per-user concurrent execution limit is well above this
+
+    async function fetchChunk(offset, limit) {
+      const body = await fetchJsonWithRetry(API_URL + `?action=allStudentsChunk&offset=${offset}&limit=${limit}`);
+      return { offset, data: body.data };
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        const body = await fetchJsonWithRetry(API_URL + '?action=districts');
-        const districts = body.data;
+        const countBody = await fetchJsonWithRetry(API_URL + '?action=studentCount');
+        const total = countBody.data;
+
+        const offsets = [];
+        for (let offset = 0; offset < total; offset += CHUNK_SIZE) offsets.push(offset);
+        const results = new Array(offsets.length);
+        let done = 0;
+
+        // Bounded-concurrency pool — fires PARALLEL_REQUESTS chunk fetches
+        // at once instead of one massive/slow single request or a fully
+        // serial chain of small ones.
+        let nextIndex = 0;
+        async function worker() {
+          while (nextIndex < offsets.length) {
+            const i = nextIndex++;
+            const { data } = await fetchChunk(offsets[i], CHUNK_SIZE);
+            results[i] = data;
+            done++;
+            document.getElementById('loadingText').textContent =
+              `Loading student list — ${Math.min(done * CHUNK_SIZE, total).toLocaleString()} / ${total.toLocaleString()}...`;
+          }
+        }
+        await Promise.all(Array.from({ length: PARALLEL_REQUESTS }, worker));
+
+        allStudents = [].concat(...results);
+
+        const districts = Array.from(new Set(allStudents.map(s => s.district))).sort();
         document.getElementById('districtSelect').innerHTML =
           '<option value="">Select district...</option>' +
           districts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+
         document.getElementById('loadingOverlay').style.display = 'none';
       } catch (err) {
         document.getElementById('loadingText').textContent = 'Failed to load: ' + (err.message || err);
       }
     });
 
-    document.getElementById('districtSelect').addEventListener('change', async function () {
+    document.getElementById('districtSelect').addEventListener('change', function () {
       const district = this.value;
       const schoolSel = document.getElementById('schoolSelect');
-      schoolSel.disabled = true;
-      schoolSel.innerHTML = '<option value="">All schools</option>';
+      schoolSel.disabled = !district;
       if (!district) {
+        schoolSel.innerHTML = '<option value="">All schools</option>';
         renderTable([]);
-        setStatus('', '');
         return;
       }
-
-      setStatus('Loading students for ' + district + '...', '');
-      renderTable([]);
-      try {
-        const students = await fetchDistrictStudents(district);
-
-        const schools = new Map(); // udise -> school
-        students.forEach(s => { if (s.udise && !schools.has(s.udise)) schools.set(s.udise, s.school); });
-        const sorted = Array.from(schools.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-        schoolSel.innerHTML = '<option value="">All schools</option>' +
-          sorted.map(([udise, school]) => `<option value="${escapeHtml(udise)}">${escapeHtml(udise)} — ${escapeHtml(school)}</option>`).join('');
-        schoolSel.disabled = false;
-
-        loadStudents();
-      } catch (err) {
-        setStatus('Failed to load students: ' + (err.message || err), 'error');
-      }
+      const schools = new Map(); // udise -> school
+      allStudents.forEach(s => {
+        if (s.district === district && s.udise && !schools.has(s.udise)) schools.set(s.udise, s.school);
+      });
+      const sorted = Array.from(schools.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+      schoolSel.innerHTML = '<option value="">All schools</option>' +
+        sorted.map(([udise, school]) => `<option value="${escapeHtml(udise)}">${escapeHtml(udise)} — ${escapeHtml(school)}</option>`).join('');
+      loadStudents();
     });
 
     document.getElementById('schoolSelect').addEventListener('change', loadStudents);
-
-    // Cached client-side per page load, so switching School (or back to
-    // "All schools") for the same District never re-hits the network.
-    async function fetchDistrictStudents(district) {
-      if (!districtStudentsCache[district]) {
-        const body = await fetchJsonWithRetry(API_URL + '?action=students&district=' + encodeURIComponent(district));
-        districtStudentsCache[district] = body.data;
-      }
-      return districtStudentsCache[district];
-    }
 
     function loadStudents() {
       const district = document.getElementById('districtSelect').value;
       if (!district) return;
       const udise = document.getElementById('schoolSelect').value;
-      const students = districtStudentsCache[district] || [];
-      currentStudents = udise ? students.filter(s => s.udise === udise) : students;
+      currentStudents = allStudents.filter(s => s.district === district && (!udise || s.udise === udise));
       renderTable(currentStudents);
       setStatus(`${currentStudents.length} student(s) found.`, '');
     }
