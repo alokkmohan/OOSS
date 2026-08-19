@@ -199,13 +199,19 @@ function getStudentsBase_(district, udise) {
     if (String(r[COL.DISTRICT - 1] || '').trim() !== district) return;
     if (udise && String(r[COL.UDISE - 1] || '').trim() !== udise) return;
     out.push({
+      district: district,
+      block: String(r[COL.BLOCK - 1] || '').trim(),
+      udise: String(r[COL.UDISE - 1] || '').trim(),
+      school: String(r[COL.SCHOOL - 1] || '').trim(),
       pen: String(r[COL.PEN - 1] || '').trim(),
       name: String(r[COL.STUDENT - 1] || '').trim(),
-      father: String(r[COL.FATHER - 1] || '').trim(),
+      sex: String(r[COL.GENDER - 1] || '').trim(),
       mobile: String(r[COL.MOBILE - 1] || '').trim(),
-      block: String(r[COL.BLOCK - 1] || '').trim(),
-      school: String(r[COL.SCHOOL - 1] || '').trim(),
+      mother: String(r[COL.MOTHER - 1] || '').trim(),
+      father: String(r[COL.FATHER - 1] || '').trim(),
       studentClass: String(r[COL.CLASS - 1] || '').trim(),
+      eligibleClass: String(r[COL.ELIGIBLE_CLASS - 1] || '').trim(),
+      academicYear: String(r[COL.ACADEMIC_YEAR - 1] || '').trim(),
     });
   });
   out.sort((a, b) => a.name.localeCompare(b.name));
