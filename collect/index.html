@@ -309,9 +309,30 @@
       }).catch(() => {});
     });
 
-    let schoolsCache = {};       // district -> array of schools
-    let studentCache = {};       // cacheKey -> array of students
+    let districtDataCache = {};  // district -> array of all student objects in district
     let currentRequestToken = 0;
+
+    async function loadDistrictData(district) {
+      if (districtDataCache[district]) return districtDataCache[district];
+
+      // 1. Try ultra-fast static CDN file first (~0.05s)
+      try {
+        const res = await fetch(`data/${encodeURIComponent(district)}.json`);
+        if (res.ok) {
+          const students = await res.json();
+          districtDataCache[district] = students;
+          return students;
+        }
+      } catch (e) {
+        console.warn('Static CDN fetch fallback to Apps Script API:', e);
+      }
+
+      // 2. Fallback to Apps Script API if static file is unavailable
+      const body = await fetchJsonWithRetry(API_URL + '?action=students&district=' + encodeURIComponent(district));
+      const students = body.data || [];
+      districtDataCache[district] = students;
+      return students;
+    }
 
     document.getElementById('districtSelect').addEventListener('change', async function () {
       const district = this.value;
@@ -331,26 +352,31 @@
       setStatus(`Loading schools list for ${district}...`, 'loading');
 
       try {
-        let schools;
-        if (schoolsCache[district]) {
-          schools = schoolsCache[district];
-        } else {
-          const body = await fetchJsonWithRetry(API_URL + '?action=schools&district=' + encodeURIComponent(district));
-          schools = body.data || [];
-          schoolsCache[district] = schools;
-        }
+        const students = await loadDistrictData(district);
 
         if (requestToken !== currentRequestToken) return;
 
+        const schools = new Map();
+        students.forEach(s => {
+          const schoolName = (s.school || '').trim();
+          const udiseCode = (s.udise || '').trim();
+          const blockName = (s.block || '').trim();
+          if (schoolName) {
+            const key = udiseCode || schoolName;
+            if (!schools.has(key)) schools.set(key, { udise: udiseCode, school: schoolName, block: blockName });
+          }
+        });
+        const sorted = Array.from(schools.values()).sort((a, b) => a.school.localeCompare(b.school));
+
         schoolSel.innerHTML = '<option value="">Select school...</option>' +
-          '<option value="__ALL__">-- All schools in district (Full List) --</option>' +
-          schools.map(s => {
+          '<option value="__ALL__">-- All schools in district (' + students.length + ' students) --</option>' +
+          sorted.map(s => {
             const label = s.udise ? `${escapeHtml(s.udise)} — ${escapeHtml(s.school)}` : escapeHtml(s.school);
             const blockInfo = s.block ? ` (${escapeHtml(s.block)})` : '';
             return `<option value="${escapeHtml(s.udise || s.school)}">${label}${blockInfo}</option>`;
           }).join('');
         schoolSel.disabled = false;
-        setStatus(`${schools.length} school(s) found in ${district}. Please select a school.`, '');
+        setStatus(`${sorted.length} school(s) found in ${district}. Please select a school.`, '');
       } catch (err) {
         if (requestToken !== currentRequestToken) return;
         setStatus(`Failed to load schools list for ${district}: ${err.message || err}`, 'error');
@@ -369,29 +395,25 @@
       }
 
       const requestToken = ++currentRequestToken;
-      const cacheKey = district + '_' + schoolVal;
       const selectedOptionText = this.options[this.selectedIndex]?.text || schoolVal;
 
       setStatus(`Loading student list for ${selectedOptionText}...`, 'loading');
-      renderTableLoading(`Loading student list for ${selectedOptionText}...`);
 
       try {
-        let students;
-        if (studentCache[cacheKey]) {
-          students = studentCache[cacheKey];
-        } else {
-          const url = API_URL + '?action=students&district=' + encodeURIComponent(district) +
-            (schoolVal === '__ALL__' ? '' : '&udise=' + encodeURIComponent(schoolVal));
-          const body = await fetchJsonWithRetry(url);
-          students = body.data || [];
-          studentCache[cacheKey] = students;
-        }
+        const allDistrictStudents = await loadDistrictData(district);
 
         if (requestToken !== currentRequestToken) return;
 
-        currentStudents = students;
+        if (schoolVal === '__ALL__') {
+          currentStudents = allDistrictStudents;
+        } else {
+          currentStudents = allDistrictStudents.filter(s =>
+            (s.udise && s.udise === schoolVal) || s.school === schoolVal
+          );
+        }
+
         renderTable(currentStudents);
-        setStatus(`${currentStudents.length} student(s) found.`, '');
+        setStatus(`${currentStudents.length} student(s) found for ${selectedOptionText}.`, '');
       } catch (err) {
         if (requestToken !== currentRequestToken) return;
         renderTableError(`Failed to load student list: ${err.message || err}`, district, schoolVal);
