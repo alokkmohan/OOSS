@@ -110,21 +110,24 @@ function targetSheet_() {
 
 const CACHE_TTL_SECONDS = 21600; // 6 hours
 
+const ALL_DISTRICTS = [
+  "AGRA", "ALIGARH", "AMBEDKAR NAGAR", "AMETHI - CSM NAGAR", "AURAIYA", "AZAMGARH",
+  "BAGHPAT", "BAHRAICH", "BALLIA", "BALRAMPUR", "BANDA", "BARABANKI", "BAREILLY",
+  "BASTI", "BHADOI", "BIJNOR", "BUDAUN", "BULANDSHAHR", "CHANDAULI", "CHITRAKOOT",
+  "DEORIA", "ETAH", "ETAWAH", "FAIZABAD", "FARRUKHABAD", "FATEHPUR", "FIROZABAD",
+  "GAUTAM BUDDHA NAGAR", "GHAZIABAD", "GHAZIPUR", "GONDA", "GORAKHPUR",
+  "HAMIRPUR (U.P.)", "HAPUR (PANCHSHEEL NAGAR)", "HARDOI", "HATHRAS", "JALAUN",
+  "JAUNPUR", "JHANSI", "JYOTIBA PHULE NAGAR (AMROHA)", "KANNAUJ", "KANPUR DEHAT",
+  "KANPUR NAGAR", "KASGANJ", "KAUSHAMBI", "KHERI", "KUSHINAGAR", "LALITPUR",
+  "LUCKNOW", "MAHARAJGANJ", "MAHOBA", "MAINPURI", "MATHURA", "MAU", "MEERUT",
+  "MIRZAPUR", "MORADABAD", "MUZAFFARNAGAR", "PILIBHIT", "PRATAPGARH", "PRAYAGRAJ",
+  "RAE BARELI", "RAMPUR", "SAHARANPUR", "SAMBHAL (BHIM NAGAR)", "SANT KABIR NAGAR",
+  "SHAHJAHANPUR", "SHAMLI (PRABUDH NAGAR)", "SHRAWASTI", "SIDDHARTHNAGAR",
+  "SITAPUR", "SONBHADRA", "SULTANPUR", "UNNAO", "VARANASI"
+];
+
 function getDistricts() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get('districts_v1');
-  if (cached) return JSON.parse(cached);
-
-  const sh = targetSheet_();
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) return [];
-  const values = sh.getRange(2, COL.DISTRICT, lastRow - 1, 1).getValues();
-  const set = new Set();
-  values.forEach(r => { const v = String(r[0] || '').trim(); if (v) set.add(v); });
-  const result = Array.from(set).sort();
-
-  cache.put('districts_v1', JSON.stringify(result), CACHE_TTL_SECONDS);
-  return result;
+  return ALL_DISTRICTS;
 }
 
 function getSchools(district) {

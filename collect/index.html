@@ -274,20 +274,39 @@
       });
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        document.getElementById('loadingText').textContent = 'Loading districts list...';
-        const body = await fetchJsonWithRetry(API_URL + '?action=districts');
-        const districts = body.data || [];
+    const ALL_DISTRICTS = [
+      "AGRA", "ALIGARH", "AMBEDKAR NAGAR", "AMETHI - CSM NAGAR", "AURAIYA", "AZAMGARH",
+      "BAGHPAT", "BAHRAICH", "BALLIA", "BALRAMPUR", "BANDA", "BARABANKI", "BAREILLY",
+      "BASTI", "BHADOI", "BIJNOR", "BUDAUN", "BULANDSHAHR", "CHANDAULI", "CHITRAKOOT",
+      "DEORIA", "ETAH", "ETAWAH", "FAIZABAD", "FARRUKHABAD", "FATEHPUR", "FIROZABAD",
+      "GAUTAM BUDDHA NAGAR", "GHAZIABAD", "GHAZIPUR", "GONDA", "GORAKHPUR",
+      "HAMIRPUR (U.P.)", "HAPUR (PANCHSHEEL NAGAR)", "HARDOI", "HATHRAS", "JALAUN",
+      "JAUNPUR", "JHANSI", "JYOTIBA PHULE NAGAR (AMROHA)", "KANNAUJ", "KANPUR DEHAT",
+      "KANPUR NAGAR", "KASGANJ", "KAUSHAMBI", "KHERI", "KUSHINAGAR", "LALITPUR",
+      "LUCKNOW", "MAHARAJGANJ", "MAHOBA", "MAINPURI", "MATHURA", "MAU", "MEERUT",
+      "MIRZAPUR", "MORADABAD", "MUZAFFARNAGAR", "PILIBHIT", "PRATAPGARH", "PRAYAGRAJ",
+      "RAE BARELI", "RAMPUR", "SAHARANPUR", "SAMBHAL (BHIM NAGAR)", "SANT KABIR NAGAR",
+      "SHAHJAHANPUR", "SHAMLI (PRABUDH NAGAR)", "SHRAWASTI", "SIDDHARTHNAGAR",
+      "SITAPUR", "SONBHADRA", "SULTANPUR", "UNNAO", "VARANASI"
+    ];
 
-        document.getElementById('districtSelect').innerHTML =
-          '<option value="">Select district...</option>' +
-          districts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('districtSelect').innerHTML =
+        '<option value="">Select district...</option>' +
+        ALL_DISTRICTS.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
 
-        document.getElementById('loadingOverlay').style.display = 'none';
-      } catch (err) {
-        document.getElementById('loadingText').textContent = 'Failed to load: ' + (err.message || err);
-      }
+      document.getElementById('loadingOverlay').style.display = 'none';
+
+      fetchJsonWithRetry(API_URL + '?action=districts').then(body => {
+        if (body.ok && Array.isArray(body.data) && body.data.length > 0) {
+          const sel = document.getElementById('districtSelect');
+          const currentVal = sel.value;
+          sel.innerHTML =
+            '<option value="">Select district...</option>' +
+            body.data.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+          if (currentVal) sel.value = currentVal;
+        }
+      }).catch(() => {});
     });
 
     document.getElementById('districtSelect').addEventListener('change', async function () {
