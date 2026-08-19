@@ -135,8 +135,8 @@
         <select id="districtSelect"><option value="">Loading...</option></select>
       </div>
       <div class="field">
-        <label>School (optional)</label>
-        <select id="schoolSelect" disabled><option value="">All schools</option></select>
+        <label>School *</label>
+        <select id="schoolSelect" disabled><option value="">Select district first...</option></select>
       </div>
     </div>
     <div id="status"></div>
@@ -157,7 +157,7 @@
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="12" style="color:var(--muted);padding:20px;text-align:center;">Select a district to load students.</td></tr>
+          <tr><td colspan="12" style="color:var(--muted);padding:20px;text-align:center;">Select District and School to view student list.</td></tr>
         </tbody>
       </table>
     </div>
@@ -309,86 +309,114 @@
       }).catch(() => {});
     });
 
-    let currentRequestDistrict = '';
+    let schoolsCache = {};       // district -> array of schools
+    let studentCache = {};       // cacheKey -> array of students
+    let currentRequestToken = 0;
 
     document.getElementById('districtSelect').addEventListener('change', async function () {
       const district = this.value;
-      currentRequestDistrict = district;
       const schoolSel = document.getElementById('schoolSelect');
       schoolSel.disabled = true;
-      schoolSel.innerHTML = '<option value="">All schools</option>';
+      schoolSel.innerHTML = '<option value="">Select school...</option>';
+
+      currentStudents = [];
+      renderTablePrompt('District selected. Please select a school above to view student list.');
 
       if (!district) {
-        currentDistrictStudents = [];
-        renderTable([]);
         setStatus('', '');
         return;
       }
 
-      setStatus(`Loading student list for ${district}...`, 'loading');
-      renderTableLoading(`Loading student list for district ${district}...`);
+      const requestToken = ++currentRequestToken;
+      setStatus(`Loading schools list for ${district}...`, 'loading');
+
+      try {
+        let schools;
+        if (schoolsCache[district]) {
+          schools = schoolsCache[district];
+        } else {
+          const body = await fetchJsonWithRetry(API_URL + '?action=schools&district=' + encodeURIComponent(district));
+          schools = body.data || [];
+          schoolsCache[district] = schools;
+        }
+
+        if (requestToken !== currentRequestToken) return;
+
+        schoolSel.innerHTML = '<option value="">Select school...</option>' +
+          '<option value="__ALL__">-- All schools in district (Full List) --</option>' +
+          schools.map(s => {
+            const label = s.udise ? `${escapeHtml(s.udise)} — ${escapeHtml(s.school)}` : escapeHtml(s.school);
+            const blockInfo = s.block ? ` (${escapeHtml(s.block)})` : '';
+            return `<option value="${escapeHtml(s.udise || s.school)}">${label}${blockInfo}</option>`;
+          }).join('');
+        schoolSel.disabled = false;
+        setStatus(`${schools.length} school(s) found in ${district}. Please select a school.`, '');
+      } catch (err) {
+        if (requestToken !== currentRequestToken) return;
+        setStatus(`Failed to load schools list for ${district}: ${err.message || err}`, 'error');
+      }
+    });
+
+    document.getElementById('schoolSelect').addEventListener('change', async function () {
+      const district = document.getElementById('districtSelect').value;
+      const schoolVal = this.value;
+
+      if (!district || !schoolVal) {
+        currentStudents = [];
+        renderTablePrompt('Please select a school to view student list.');
+        setStatus('', '');
+        return;
+      }
+
+      const requestToken = ++currentRequestToken;
+      const cacheKey = district + '_' + schoolVal;
+      const selectedOptionText = this.options[this.selectedIndex]?.text || schoolVal;
+
+      setStatus(`Loading student list for ${selectedOptionText}...`, 'loading');
+      renderTableLoading(`Loading student list for ${selectedOptionText}...`);
 
       try {
         let students;
-        if (districtCache[district]) {
-          students = districtCache[district];
+        if (studentCache[cacheKey]) {
+          students = studentCache[cacheKey];
         } else {
-          const body = await fetchJsonWithRetry(API_URL + '?action=students&district=' + encodeURIComponent(district));
+          const url = API_URL + '?action=students&district=' + encodeURIComponent(district) +
+            (schoolVal === '__ALL__' ? '' : '&udise=' + encodeURIComponent(schoolVal));
+          const body = await fetchJsonWithRetry(url);
           students = body.data || [];
-          districtCache[district] = students;
+          studentCache[cacheKey] = students;
         }
 
-        if (district !== currentRequestDistrict) return; // Prevent race condition from slow out-of-order network responses
+        if (requestToken !== currentRequestToken) return;
 
-        currentDistrictStudents = students;
-
-        const schools = new Map();
-        students.forEach(s => {
-          const schoolName = (s.school || '').trim();
-          const udiseCode = (s.udise || '').trim();
-          if (schoolName) {
-            const key = udiseCode || schoolName;
-            if (!schools.has(key)) schools.set(key, { udise: udiseCode, school: schoolName });
-          }
-        });
-        const sorted = Array.from(schools.values()).sort((a, b) => a.school.localeCompare(b.school));
-        schoolSel.innerHTML = '<option value="">All schools (' + sorted.length + ')</option>' +
-          sorted.map(s => `<option value="${escapeHtml(s.udise || s.school)}">${escapeHtml(s.udise ? s.udise + ' — ' + s.school : s.school)}</option>`).join('');
-        schoolSel.disabled = false;
-
-        filterAndRender();
+        currentStudents = students;
+        renderTable(currentStudents);
+        setStatus(`${currentStudents.length} student(s) found.`, '');
       } catch (err) {
-        if (district !== currentRequestDistrict) return;
-        renderTableError(`Failed to load student list for district ${district}: ${err.message || err}`, district);
+        if (requestToken !== currentRequestToken) return;
+        renderTableError(`Failed to load student list: ${err.message || err}`, district, schoolVal);
         setStatus('Error loading student list.', 'error');
       }
     });
 
-    document.getElementById('schoolSelect').addEventListener('change', filterAndRender);
-
-    function filterAndRender() {
-      const district = document.getElementById('districtSelect').value;
-      if (!district) return;
-      const selVal = document.getElementById('schoolSelect').value;
-      currentStudents = currentDistrictStudents.filter(s => !selVal || s.udise === selVal || s.school === selVal);
-      renderTable(currentStudents);
-      setStatus(`${currentStudents.length} student(s) found in ${district}.`, '');
+    function renderTablePrompt(msg) {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = `<tr><td colspan="12" style="color:var(--muted);padding:30px;text-align:center;">${escapeHtml(msg)}</td></tr>`;
     }
 
     function renderTableLoading(msg) {
       const tbody = document.getElementById('tbody');
-      tbody.innerHTML = `<tr><td colspan="12" style="color:var(--navy);padding:25px;text-align:center;"><span class="btn-spinner" style="border-top-color:var(--navy);"></span> ${escapeHtml(msg)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="12" style="color:var(--navy);padding:30px;text-align:center;"><span class="btn-spinner" style="border-top-color:var(--navy);"></span> ${escapeHtml(msg)}</td></tr>`;
     }
 
-    function renderTableError(msg, district) {
+    function renderTableError(msg, district, schoolVal) {
       const tbody = document.getElementById('tbody');
-      tbody.innerHTML = `<tr><td colspan="12" style="color:var(--red);padding:20px;text-align:center;">${escapeHtml(msg)}<br><br><button type="button" onclick="retryDistrictFetch('${escapeHtml(district)}')">Re-try</button></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="12" style="color:var(--red);padding:20px;text-align:center;">${escapeHtml(msg)}<br><br><button type="button" onclick="retryFetch('${escapeHtml(district)}', '${escapeHtml(schoolVal)}')">Re-try</button></td></tr>`;
     }
 
-    function retryDistrictFetch(district) {
-      delete districtCache[district];
-      document.getElementById('districtSelect').value = district;
-      document.getElementById('districtSelect').dispatchEvent(new Event('change'));
+    function retryFetch(district, schoolVal) {
+      delete studentCache[district + '_' + schoolVal];
+      document.getElementById('schoolSelect').dispatchEvent(new Event('change'));
     }
 
     function statusBadge(status, reason) {

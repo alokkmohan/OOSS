@@ -200,7 +200,7 @@ function getStudentsBase_(district, udise) {
   const out = [];
   values.forEach(r => {
     if (String(r[COL.DISTRICT - 1] || '').trim() !== district) return;
-    if (udise && String(r[COL.UDISE - 1] || '').trim() !== udise) return;
+    if (udise && String(r[COL.UDISE - 1] || '').trim() !== udise && String(r[COL.SCHOOL - 1] || '').trim() !== udise) return;
     out.push({
       district: district,
       block: String(r[COL.BLOCK - 1] || '').trim(),
