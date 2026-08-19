@@ -184,7 +184,9 @@ function collectionStatusByPen_() {
  */
 function getStudentsBase_(district, udise) {
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'students_v1_' + district + '_' + (udise || '');
+  // v2: added udise/sex/mother, which the /collect/ table needs now that
+  // it loads per-district instead of the old all-90k-upfront chunk fetch.
+  const cacheKey = 'students_v2_' + district + '_' + (udise || '');
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -202,8 +204,11 @@ function getStudentsBase_(district, udise) {
       pen: String(r[COL.PEN - 1] || '').trim(),
       name: String(r[COL.STUDENT - 1] || '').trim(),
       father: String(r[COL.FATHER - 1] || '').trim(),
+      mother: String(r[COL.MOTHER - 1] || '').trim(),
+      sex: String(r[COL.GENDER - 1] || '').trim(),
       mobile: String(r[COL.MOBILE - 1] || '').trim(),
       block: String(r[COL.BLOCK - 1] || '').trim(),
+      udise: String(r[COL.UDISE - 1] || '').trim(),
       school: String(r[COL.SCHOOL - 1] || '').trim(),
       studentClass: String(r[COL.CLASS - 1] || '').trim(),
     });
