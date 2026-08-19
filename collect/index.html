@@ -549,33 +549,24 @@
         remarks: document.getElementById('remarksBox').value,
       };
 
-      const saveBtn = document.getElementById('saveBtn');
-      const originalLabel = 'सहेजें';
-      saveBtn.disabled = true;
-      saveBtn.innerHTML = '<span class="btn-spinner"></span>सहेजा जा रहा है...';
-      try {
-        await apiPost('submit', payload);
-        // Reflect the save immediately in the in-memory dataset too, so the
-        // table updates without re-fetching all 90k rows.
-        activeStudent.currentStatus = answers.currentStatus;
-        activeStudent.willing = payload.willing;
-        activeStudent.mode = answers.mode;
-        activeStudent.reason = answers.reason;
-        renderTable(currentStudents);
+      // Optimistically update in-memory student object and table UI instantly (0ms delay)
+      const targetStudent = activeStudent;
+      targetStudent.currentStatus = answers.currentStatus;
+      targetStudent.willing = payload.willing;
+      targetStudent.mode = answers.mode;
+      targetStudent.reason = answers.reason;
+      renderTable(currentStudents);
 
-        saveBtn.classList.add('success');
-        saveBtn.textContent = '✓ सहेजा गया';
-        setTimeout(() => {
-          saveBtn.classList.remove('success');
-          saveBtn.textContent = originalLabel;
-          saveBtn.disabled = false;
-          closeModal();
-        }, 700);
-      } catch (err) {
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalLabel;
-        document.getElementById('modalError').textContent = err.message || String(err);
-      }
+      closeModal();
+      setStatus(`Saving status for ${targetStudent.name}...`, 'loading');
+
+      // Submit API payload asynchronously in background without freezing UI
+      apiPost('submit', payload).then(() => {
+        setStatus(`Status saved successfully for ${targetStudent.name}.`, '');
+      }).catch(err => {
+        console.error('Background submit error:', err);
+        setStatus(`Save error for ${targetStudent.name}: ${err.message || err}. Please retry.`, 'error');
+      });
     }
 
     function escapeHtml(s) {
