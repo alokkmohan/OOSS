@@ -309,8 +309,11 @@
       }).catch(() => {});
     });
 
+    let currentRequestDistrict = '';
+
     document.getElementById('districtSelect').addEventListener('change', async function () {
       const district = this.value;
+      currentRequestDistrict = district;
       const schoolSel = document.getElementById('schoolSelect');
       schoolSel.disabled = true;
       schoolSel.innerHTML = '<option value="">All schools</option>';
@@ -335,19 +338,27 @@
           districtCache[district] = students;
         }
 
+        if (district !== currentRequestDistrict) return; // Prevent race condition from slow out-of-order network responses
+
         currentDistrictStudents = students;
 
-        const schools = new Map(); // udise -> school
+        const schools = new Map();
         students.forEach(s => {
-          if (s.udise && !schools.has(s.udise)) schools.set(s.udise, s.school);
+          const schoolName = (s.school || '').trim();
+          const udiseCode = (s.udise || '').trim();
+          if (schoolName) {
+            const key = udiseCode || schoolName;
+            if (!schools.has(key)) schools.set(key, { udise: udiseCode, school: schoolName });
+          }
         });
-        const sorted = Array.from(schools.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-        schoolSel.innerHTML = '<option value="">All schools (' + schools.size + ')</option>' +
-          sorted.map(([udise, school]) => `<option value="${escapeHtml(udise)}">${escapeHtml(udise)} — ${escapeHtml(school)}</option>`).join('');
+        const sorted = Array.from(schools.values()).sort((a, b) => a.school.localeCompare(b.school));
+        schoolSel.innerHTML = '<option value="">All schools (' + sorted.length + ')</option>' +
+          sorted.map(s => `<option value="${escapeHtml(s.udise || s.school)}">${escapeHtml(s.udise ? s.udise + ' — ' + s.school : s.school)}</option>`).join('');
         schoolSel.disabled = false;
 
         filterAndRender();
       } catch (err) {
+        if (district !== currentRequestDistrict) return;
         renderTableError(`Failed to load student list for district ${district}: ${err.message || err}`, district);
         setStatus('Error loading student list.', 'error');
       }
@@ -358,8 +369,8 @@
     function filterAndRender() {
       const district = document.getElementById('districtSelect').value;
       if (!district) return;
-      const udise = document.getElementById('schoolSelect').value;
-      currentStudents = currentDistrictStudents.filter(s => !udise || s.udise === udise);
+      const selVal = document.getElementById('schoolSelect').value;
+      currentStudents = currentDistrictStudents.filter(s => !selVal || s.udise === selVal || s.school === selVal);
       renderTable(currentStudents);
       setStatus(`${currentStudents.length} student(s) found in ${district}.`, '');
     }
