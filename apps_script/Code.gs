@@ -50,6 +50,8 @@ const CCOL = { PEN: 1, STATUS: 15, WILLING: 16, MODE: 17, REASON: 18, UPDATED: 2
  * GET  ?action=districts
  * GET  ?action=schools&district=...
  * GET  ?action=students&district=...&udise=...   (udise optional)
+ * GET  ?action=collectionStatus                   (PEN -> {currentStatus,willing,mode,reason},
+ *        for the static /collect/data/*.json page — small/fast, merged client-side)
  * GET  ?action=studentCount
  * GET  ?action=allStudentsChunk&offset=N&limit=M   (see getAllStudentsChunk)
  * GET  ?action=summary                             (for the /dashboard/ page)
@@ -67,6 +69,7 @@ function doGet(e) {
     if (action === 'districts') return jsonOutput_({ ok: true, data: getDistricts() });
     if (action === 'schools') return jsonOutput_({ ok: true, data: getSchools(e.parameter.district) });
     if (action === 'students') return jsonOutput_({ ok: true, data: getStudents(e.parameter.district, e.parameter.udise || '') });
+    if (action === 'collectionStatus') return jsonOutput_({ ok: true, data: collectionStatusByPen_() });
     if (action === 'studentCount') return jsonOutput_({ ok: true, data: getStudentCount() });
     if (action === 'allStudentsChunk') {
       const offset = parseInt(e.parameter.offset, 10) || 0;
