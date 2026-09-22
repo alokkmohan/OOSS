@@ -383,8 +383,51 @@
       return list;
     }
 
-    async function renderSchoolSubrowContent(district, liveSchoolStats, containerEl) {
+    const liveDistrictStudentsCache = {};
+    async function fetchDistrictLiveStudents(district) {
+      if (liveDistrictStudentsCache[district]) return liveDistrictStudentsCache[district];
+      try {
+        const url = `${SCRIPT_URL}?action=students&district=${encodeURIComponent(district)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.ok && Array.isArray(json.data)) {
+            liveDistrictStudentsCache[district] = json.data;
+            return json.data;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch live students for " + district, e);
+      }
+      return [];
+    }
+
+    async function renderSchoolSubrowContent(district, liveSchoolStatsFromSummary, containerEl) {
       containerEl.innerHTML = `<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:0.85rem;"><span class="spinner" style="display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:6px;"></span> Loading school progress for ${escapeHtml(district)}...</div>`;
+
+      let liveSchoolStats = liveSchoolStatsFromSummary || {};
+
+      // Dynamically fetch student-level collection entries for 100% accurate school stats
+      const liveStudents = await fetchDistrictLiveStudents(district);
+      if (liveStudents && liveStudents.length > 0) {
+        const computedStats = {};
+        liveStudents.forEach(s => {
+          if (s.currentStatus) {
+            const sch = (s.school || '').trim();
+            if (!computedStats[sch]) {
+              computedStats[sch] = { collected: 0, studying: 0, notStudying: 0, willing: 0 };
+            }
+            const sc = computedStats[sch];
+            sc.collected++;
+            if (s.currentStatus === 'Studying') sc.studying++;
+            else if (s.currentStatus === 'Not Studying') {
+              sc.notStudying++;
+              if (s.willing === 'Yes') sc.willing++;
+            }
+          }
+        });
+        liveSchoolStats = computedStats;
+      }
 
       const list = await buildSchoolBreakdown(district, liveSchoolStats);
 
