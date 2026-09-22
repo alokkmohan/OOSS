@@ -3,145 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Out-of-School Student Tracking Dashboard — UP Education Dept.</title>
+  <title>Out-of-School Student Tracking — UP Education Dept.</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Bump ?v=N on app.js/styles.css whenever either changes — GitHub
-       Pages/browsers cache them, and a stale JS + fresh HTML pair (or vice
-       versa) mismatches element IDs and blanks the whole page. -->
-  <link rel="stylesheet" href="styles.css?v=6">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --navy: #1c3866; --navy-dark: #142845; --bg: #f1f5f9; --card: #ffffff;
+      --border: rgba(15,23,42,0.1); --text: #0f172a; --muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px;
+      text-align: center;
+    }
+    h1 { font-size: 1.6rem; color: var(--navy); margin-bottom: 8px; }
+    p.sub { color: var(--muted); font-size: 0.95rem; max-width: 480px; margin-bottom: 32px; }
+    .links { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .link-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 24px 32px; min-width: 200px; text-decoration: none; color: var(--text);
+      box-shadow: 0 1px 3px rgba(15,23,42,0.06); transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .link-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(15,23,42,0.1); }
+    .link-card .title { font-weight: 700; color: var(--navy); font-size: 1.05rem; margin-bottom: 6px; }
+    .link-card .desc { font-size: 0.85rem; color: var(--muted); }
+  </style>
 </head>
 <body>
-
-  <!-- Dashboard Header -->
-  <header class="dashboard-header">
-    <div class="header-title">
-      <h1>Out-of-School Student Status Dashboard</h1>
-      <p>Uttar Pradesh Secondary Education Department — Dropout Tracking & Classification System</p>
-    </div>
-    <div class="header-meta">
-      <span id="generated-at" class="generated-at"></span>
-    </div>
-  </header>
-
-  <!-- KPI Scorecards Grid -->
-  <section class="kpi-grid">
-    <div class="kpi-card blue">
-      <div class="kpi-label">Total Student Records</div>
-      <div class="kpi-value" id="kpi-total">—</div>
-      <div class="kpi-subtext" id="kpi-total-sub">Across all responding districts</div>
-    </div>
-    <div class="kpi-card green">
-      <div class="kpi-label">Known - Studying</div>
-      <div class="kpi-value" id="kpi-studying">—</div>
-      <div class="kpi-subtext" id="kpi-studying-sub"></div>
-    </div>
-    <div class="kpi-card orange">
-      <div class="kpi-label">Known - Not Studying / Dropout</div>
-      <div class="kpi-value" id="kpi-dropout">—</div>
-      <div class="kpi-subtext" id="kpi-dropout-sub"></div>
-    </div>
-    <div class="kpi-card gray">
-      <div class="kpi-label">Unclear / No Real Status</div>
-      <div class="kpi-value" id="kpi-unclear">—</div>
-      <div class="kpi-subtext" id="kpi-unclear-sub"></div>
-    </div>
-    <div class="kpi-card blue">
-      <div class="kpi-label">Districts Reporting</div>
-      <div class="kpi-value" id="kpi-districts">—</div>
-      <div class="kpi-subtext" id="kpi-districts-sub">of 75 target districts</div>
-    </div>
-  </section>
-
-  <!-- Interactive Charts Grid -->
-  <section class="charts-grid">
-    <!-- Chart 1: Status Category Distribution -->
-    <div class="chart-card col-4">
-      <div class="chart-header">
-        <h2 class="chart-title">Status Breakdown</h2>
-      </div>
-      <div class="chart-container">
-        <canvas id="chart-status"></canvas>
-      </div>
-    </div>
-
-    <!-- Chart 2: Willingness (Not Studying only) -->
-    <div class="chart-card col-4">
-      <div class="chart-header">
-        <h2 class="chart-title">Willing / Unwilling / Unclear</h2>
-      </div>
-      <div class="chart-container">
-        <canvas id="chart-willingness"></canvas>
-      </div>
-    </div>
-
-    <!-- Chart 3: Social Category Breakdown -->
-    <div class="chart-card col-4">
-      <div class="chart-header">
-        <h2 class="chart-title">Status by Social Category</h2>
-      </div>
-      <div class="chart-container">
-        <canvas id="chart-category"></canvas>
-      </div>
-    </div>
-
-    <!-- Chart 4: Reason-wise Breakup -->
-    <div class="chart-card col-8">
-      <div class="chart-header">
-        <h2 class="chart-title">Reason-wise Breakup — Not Studying & Unclear Cases</h2>
-      </div>
-      <div class="chart-container chart-container-tall">
-        <canvas id="chart-reasons"></canvas>
-      </div>
-    </div>
-
-    <!-- Chart 5: Gender Analysis -->
-    <div class="chart-card col-4">
-      <div class="chart-header">
-        <h2 class="chart-title">Status by Gender</h2>
-      </div>
-      <div class="chart-container">
-        <canvas id="chart-gender"></canvas>
-      </div>
-    </div>
-  </section>
-
-  <!-- District Breakdown Table Section -->
-  <section class="table-card">
-    <div class="table-header">
-      <h2 class="chart-title">District-wise Verification Leaderboard</h2>
-      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-        <select id="district-sort" class="sort-select">
-          <option value="unclear_pct">Sort: Highest Unclear % first</option>
-          <option value="total">Sort: Total records</option>
-          <option value="verification_rate_pct">Sort: Verification rate</option>
-          <option value="district_name">Sort: District name (A-Z)</option>
-        </select>
-        <input type="text" id="district-search" class="search-input" placeholder="Search District...">
-        <button id="district-download" class="download-btn" type="button">Download CSV</button>
-      </div>
-    </div>
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>District Name</th>
-            <th>Total Surveyed</th>
-            <th>Known Studying</th>
-            <th>Known Not Studying</th>
-            <th>Unclear / Pending</th>
-            <th>Verification Rate (%)</th>
-          </tr>
-        </thead>
-        <tbody id="table-district-body">
-          <!-- Populated by JavaScript -->
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <script src="app.js?v=6"></script>
+  <h1>Out-of-School Student Tracking</h1>
+  <p class="sub">Uttar Pradesh Secondary Education Department — Dropout Tracking & Classification System</p>
+  <div class="links">
+    <a class="link-card" href="/collect/">
+      <div class="title">Field Data Collection</div>
+      <div class="desc">Record student status by district and school</div>
+    </a>
+    <a class="link-card" href="/dashboard/">
+      <div class="title">Live Dashboard</div>
+      <div class="desc">Real-time verification and status summary</div>
+    </a>
+  </div>
 </body>
 </html>
