@@ -225,7 +225,7 @@
     // Bump if the Apps Script deployment is ever recreated (new deployment
     // = new URL). This page's own URL (ooss.dataimpact.in/collect/) never
     // changes for field coordinators even if this does.
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxLl9MwoDUNesto-pS7D-lFl6ED30eRLz7eQLOhvBZBJHWRWTr7XNMysnsXtPU19ubAvw/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycby0_iWF3jfCwhFoQ68BZ0QGZqBNyx5AlleumYndNu3-8dU7rbliv01tX3qN_dO_yEHCdg/exec';
 
     let districtCache = {};         // district -> array of student records
     let currentDistrictStudents = []; // all students for selected district
@@ -239,12 +239,74 @@
       el.className = cls || '';
     }
 
+    // Pending Queue for offline/failed submissions
+    function getPendingQueue() {
+      try {
+        return JSON.parse(localStorage.getItem('pending_submissions') || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function savePendingQueue(queue) {
+      try {
+        localStorage.setItem('pending_submissions', JSON.stringify(queue));
+      } catch (e) {}
+    }
+
+    function enqueuePendingSubmission(payload) {
+      const queue = getPendingQueue();
+      const existingIdx = queue.findIndex(item => item.pen === payload.pen);
+      if (existingIdx >= 0) {
+        queue[existingIdx] = payload;
+      } else {
+        queue.push(payload);
+      }
+      savePendingQueue(queue);
+      updatePendingBadge();
+    }
+
+    function updatePendingBadge() {
+      const queue = getPendingQueue();
+      const badgeEl = document.getElementById('pendingBadge');
+      if (badgeEl) {
+        if (queue.length > 0) {
+          badgeEl.textContent = ` (${queue.length} un-synced entries saved locally)`;
+          badgeEl.style.display = 'inline-block';
+        } else {
+          badgeEl.style.display = 'none';
+        }
+      }
+    }
+
+    let isSyncingPending = false;
+    async function syncPendingSubmissions() {
+      if (isSyncingPending) return;
+      const queue = getPendingQueue();
+      if (!queue.length) return;
+
+      isSyncingPending = true;
+      const remaining = [];
+      for (const payload of queue) {
+        try {
+          await apiPost('submit', payload);
+        } catch (e) {
+          remaining.push(payload);
+        }
+      }
+      savePendingQueue(remaining);
+      updatePendingBadge();
+      isSyncingPending = false;
+    }
+
+    setInterval(syncPendingSubmissions, 15000);
+
     // Apps Script Web Apps occasionally return an HTML "access denied"/
     // sign-in interstitial instead of JSON for no clear reason — a retry
     // almost always succeeds. Wrap every call in a few retries with a
     // short backoff before actually surfacing an error to the user.
     async function fetchJsonWithRetry(url, options, retries) {
-      retries = retries === undefined ? 3 : retries;
+      retries = retries === undefined ? 2 : retries;
       let lastErr;
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
@@ -254,13 +316,13 @@
           try {
             body = JSON.parse(text);
           } catch (e) {
-            throw new Error('अस्थायी सर्वर त्रुटि (server ने JSON की जगह कुछ और भेजा)');
+            throw new Error('Server returned auth HTML page (Permission error)');
           }
           if (!body.ok) throw new Error(body.error || 'Request failed');
           return body;
         } catch (err) {
           lastErr = err;
-          if (attempt < retries) await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+          if (attempt < retries) await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
         }
       }
       throw lastErr;
@@ -584,10 +646,12 @@
 
       // Submit API payload asynchronously in background without freezing UI
       apiPost('submit', payload).then(() => {
-        setStatus(`Status saved successfully for ${targetStudent.name}.`, '');
+        setStatus(`Status saved successfully for ${targetStudent.name}.`, 'success');
+        syncPendingSubmissions();
       }).catch(err => {
         console.error('Background submit error:', err);
-        setStatus(`Save error for ${targetStudent.name}: ${err.message || err}. Please retry.`, 'error');
+        enqueuePendingSubmission(payload);
+        setStatus(`Status for ${targetStudent.name} saved in browser storage (Pending Google Sheet sync). Apps Script access issue.`, 'warning');
       });
     }
 
