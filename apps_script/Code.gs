@@ -336,7 +336,7 @@ function getSummary() {
     const reason = String(r[CCOL.REASON - 1] || '').trim();
 
     const d = summary.districtBreakdown[district] ||
-      (summary.districtBreakdown[district] = { collected: 0, studying: 0, notStudying: 0, deceased: 0 });
+      (summary.districtBreakdown[district] = { collected: 0, studying: 0, notStudying: 0, deceased: 0, willing: 0 });
     d.collected++;
 
     if (status === 'Studying') { summary.studying++; d.studying++; }
@@ -348,7 +348,7 @@ function getSummary() {
         summary.deceased++; d.deceased++;
       } else {
         summary.notStudying++; d.notStudying++;
-        if (willing === 'Yes') summary.willing++;
+        if (willing === 'Yes') { summary.willing++; d.willing++; }
         else if (willing === 'No') summary.unwilling++;
         if (mode === 'Regular') summary.modeRegular++;
         else if (mode === 'NIOS') summary.modeNios++;

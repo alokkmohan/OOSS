@@ -119,10 +119,10 @@
       <div class="kpi-value" id="kpiNotStudying">—</div>
       <div class="kpi-sub" id="kpiNotStudyingSub"></div>
     </div>
-    <div class="kpi-card red">
-      <div class="kpi-label">Death</div>
-      <div class="kpi-value" id="kpiDeceased">—</div>
-      <div class="kpi-sub"></div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Willing to Resume</div>
+      <div class="kpi-value" id="kpiWilling">—</div>
+      <div class="kpi-sub" id="kpiWillingSub"></div>
     </div>
   </section>
 
@@ -150,7 +150,7 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>District</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Death</th></tr>
+          <tr><th>District</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Willing</th></tr>
         </thead>
         <tbody id="districtBody"></tbody>
       </table>
@@ -183,7 +183,8 @@
       document.getElementById('kpiStudyingSub').textContent = pct(s.studying, s.collected) + '% of collected';
       document.getElementById('kpiNotStudying').textContent = s.notStudying.toLocaleString();
       document.getElementById('kpiNotStudyingSub').textContent = pct(s.notStudying, s.collected) + '% of collected';
-      document.getElementById('kpiDeceased').textContent = s.deceased.toLocaleString();
+      document.getElementById('kpiWilling').textContent = (s.willing || 0).toLocaleString();
+      document.getElementById('kpiWillingSub').textContent = pct(s.willing || 0, s.notStudying || 0) + '% of not studying';
       document.getElementById('generatedAt').textContent = 'Live data as of ' + new Date(s.generatedAt).toLocaleString();
     }
 
@@ -256,7 +257,7 @@
           <td>${d.collected.toLocaleString()}</td>
           <td>${d.studying.toLocaleString()}</td>
           <td>${d.notStudying.toLocaleString()}</td>
-          <td>${d.deceased.toLocaleString()}</td>
+          <td>${(d.willing || 0).toLocaleString()}</td>
         </tr>
       `).join('');
     }
