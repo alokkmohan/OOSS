@@ -265,37 +265,228 @@
       }[c]));
     }
 
-    function schoolRowsHtml(schools) {
-      const entries = Object.entries(schools || {}).sort((a, b) => b[1].collected - a[1].collected);
-      if (!entries.length) return '<div class="empty-note" style="padding:14px;font-size:0.8rem;">No school-level data recorded for this district yet.</div>';
-      return `
+    const MASTER_DISTRICT_FILES = [
+      "AGRA.json", "ALIGARH.json", "AMBEDKAR NAGAR.json", "AMETHI - CSM NAGAR.json", "AURAIYA.json", "AZAMGARH.json",
+      "BAGHPAT.json", "BAHRAICH.json", "BALLIA.json", "BALRAMPUR.json", "BANDA.json", "BARABANKI.json", "BAREILLY.json",
+      "BASTI.json", "BHADOI.json", "BIJNOR.json", "BUDAUN.json", "BULANDSHAHR.json", "CHANDAULI.json", "CHITRAKOOT.json",
+      "DEORIA.json", "ETAH.json", "ETAWAH.json", "FAIZABAD.json", "FARRUKHABAD.json", "FATEHPUR.json", "FIROZABAD.json",
+      "GAUTAM BUDDHA NAGAR.json", "GHAZIABAD.json", "GHAZIPUR.json", "GONDA.json", "GORAKHPUR.json", "HAMIRPUR (U.P.).json",
+      "HAPUR (PANCHSHEEL NAGAR).json", "HARDOI.json", "HATHRAS.json", "JALAUN.json", "JAUNPUR.json", "JHANSI.json",
+      "JYOTIBA PHULE NAGAR (AMROHA).json", "KANNAUJ.json", "KANPUR DEHAT.json", "KANPUR NAGAR.json", "KASGANJ.json",
+      "KAUSHAMBI.json", "KHERI.json", "KUSHINAGAR.json", "LALITPUR.json", "LUCKNOW.json", "MAHARAJGANJ.json", "MAHOBA.json",
+      "MAINPURI.json", "MATHURA.json", "MAU.json", "MEERUT.json", "MIRZAPUR.json", "MORADABAD.json", "MUZAFFARNAGAR.json",
+      "PILIBHIT.json", "PRATAPGARH.json", "PRAYAGRAJ.json", "RAE BARELI.json", "RAMPUR.json", "SAHARANPUR.json",
+      "SAMBHAL (BHIM NAGAR).json", "SANT KABIR NAGAR.json", "SHAHJAHANPUR.json", "SHAMLI (PRABUDH NAGAR).json",
+      "SHRAWASTI.json", "SIDDHARTHNAGAR.json", "SITAPUR.json", "SONBHADRA.json", "SULTANPUR.json", "UNNAO.json", "VARANASI.json"
+    ];
+
+    function resolveDistrictFileName(district) {
+      if (!district) return null;
+      const target = String(district).trim();
+
+      // 1. Exact base match
+      const exact = MASTER_DISTRICT_FILES.find(f => f.replace('.json', '').toLowerCase() === target.toLowerCase());
+      if (exact) return exact;
+
+      // 2. Normalized match (alphanumeric only)
+      const normTarget = target.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const match = MASTER_DISTRICT_FILES.find(f => {
+        const normFile = f.replace('.json', '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normFile === normTarget || normFile.includes(normTarget) || normTarget.includes(normFile);
+      });
+      if (match) return match;
+
+      return `${target}.json`;
+    }
+
+    const districtMasterCache = {};
+    async function loadDistrictMasterStudents(district) {
+      if (districtMasterCache[district]) return districtMasterCache[district];
+      const fileName = resolveDistrictFileName(district);
+      const paths = [
+        `../collect/data/${encodeURIComponent(fileName)}`,
+        `collect/data/${encodeURIComponent(fileName)}`,
+        `/collect/data/${encodeURIComponent(fileName)}`
+      ];
+      for (const p of paths) {
+        try {
+          const res = await fetch(p);
+          if (res.ok) {
+            const data = await res.json();
+            districtMasterCache[district] = data;
+            return data;
+          }
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    async function buildSchoolBreakdown(district, liveSchoolStats) {
+      const masterStudents = await loadDistrictMasterStudents(district);
+      const schoolMap = new Map();
+
+      if (masterStudents && Array.isArray(masterStudents)) {
+        masterStudents.forEach(s => {
+          const name = (s.school || '').trim() || 'Unknown School';
+          const udise = (s.udise || '').trim();
+          const key = name;
+          if (!schoolMap.has(key)) {
+            schoolMap.set(key, {
+              school: name,
+              udise: udise,
+              target: 0,
+              collected: 0,
+              studying: 0,
+              notStudying: 0,
+              willing: 0,
+            });
+          }
+          schoolMap.get(key).target++;
+        });
+      }
+
+      const liveSchools = liveSchoolStats || {};
+      Object.entries(liveSchools).forEach(([schName, stats]) => {
+        const key = schName;
+        if (!schoolMap.has(key)) {
+          schoolMap.set(key, {
+            school: schName,
+            udise: '',
+            target: stats.collected || 0,
+            collected: 0,
+            studying: 0,
+            notStudying: 0,
+            willing: 0,
+          });
+        }
+        const item = schoolMap.get(key);
+        item.collected = stats.collected || 0;
+        item.studying = stats.studying || 0;
+        item.notStudying = stats.notStudying || 0;
+        item.willing = stats.willing || 0;
+      });
+
+      const list = Array.from(schoolMap.values());
+      list.sort((a, b) => {
+        if (b.collected !== a.collected) return b.collected - a.collected;
+        return b.target - a.target;
+      });
+      return list;
+    }
+
+    async function renderSchoolSubrowContent(district, liveSchoolStats, containerEl) {
+      containerEl.innerHTML = `<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:0.85rem;"><span class="spinner" style="display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:6px;"></span> Loading school progress for ${escapeHtml(district)}...</div>`;
+
+      const list = await buildSchoolBreakdown(district, liveSchoolStats);
+
+      if (!list || !list.length) {
+        containerEl.innerHTML = `<div class="empty-note" style="padding:14px;font-size:0.8rem;">No school data found for ${escapeHtml(district)}.</div>`;
+        return;
+      }
+
+      function renderTableRows(filteredList) {
+        return filteredList.map(s => {
+          const pending = Math.max(s.target - s.collected, 0);
+          let statusBadge = '';
+          if (s.collected === 0) {
+            statusBadge = '<span style="color:#dc2626;font-weight:600;font-size:0.75rem;">🔴 Not Started</span>';
+          } else if (pending === 0) {
+            statusBadge = '<span style="color:#16a34a;font-weight:600;font-size:0.75rem;">🟢 Completed</span>';
+          } else {
+            statusBadge = '<span style="color:#ea580c;font-weight:600;font-size:0.75rem;">🟡 In Progress</span>';
+          }
+          const label = s.udise ? `${escapeHtml(s.school)} <span style="color:var(--text-muted);font-size:0.75rem;font-weight:normal;">(${escapeHtml(s.udise)})</span>` : escapeHtml(s.school);
+          return `
+            <tr>
+              <td style="font-weight:500;">${label}</td>
+              <td><strong>${s.target.toLocaleString()}</strong></td>
+              <td>${s.collected.toLocaleString()}</td>
+              <td>${pending.toLocaleString()}</td>
+              <td>${(s.studying || 0).toLocaleString()}</td>
+              <td>${(s.notStudying || 0).toLocaleString()}</td>
+              <td>${statusBadge}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      containerEl.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
+          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:500;">
+            Showing <strong class="school-count-label" style="color:var(--text-main);">${list.length}</strong> schools in <strong>${escapeHtml(district)}</strong>
+          </div>
+          <input type="text" class="subrow-search-input" placeholder="🔍 Search school or UDISE..." style="padding:6px 12px; font-size:0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text-main); width:240px; outline:none;" />
+        </div>
         <table class="school-table">
           <thead>
-            <tr><th>School Name</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Willing</th></tr>
+            <tr>
+              <th>School Name</th>
+              <th>Target</th>
+              <th>Collected</th>
+              <th>Pending</th>
+              <th>Studying</th>
+              <th>Not Studying</th>
+              <th>Status</th>
+            </tr>
           </thead>
-          <tbody>
-            ${entries.map(([school, d]) => `
-              <tr>
-                <td style="font-weight:500;">${escapeHtml(school)}</td>
-                <td>${d.collected.toLocaleString()}</td>
-                <td>${(d.studying || 0).toLocaleString()}</td>
-                <td>${(d.notStudying || 0).toLocaleString()}</td>
-                <td>${(d.willing || 0).toLocaleString()}</td>
-              </tr>
-            `).join('')}
+          <tbody class="school-table-body">
+            ${renderTableRows(list)}
           </tbody>
         </table>`;
+
+      const searchInput = containerEl.querySelector('.subrow-search-input');
+      const tableBody = containerEl.querySelector('.school-table-body');
+      const countLabel = containerEl.querySelector('.school-count-label');
+
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          const q = searchInput.value.toLowerCase().trim();
+          const filtered = list.filter(s =>
+            s.school.toLowerCase().includes(q) || (s.udise && s.udise.toLowerCase().includes(q))
+          );
+          tableBody.innerHTML = filtered.length
+            ? renderTableRows(filtered)
+            : `<tr><td colspan="7" class="empty-note" style="padding:12px;text-align:center;">No matching schools found.</td></tr>`;
+          if (countLabel) countLabel.textContent = filtered.length;
+        });
+      }
     }
 
     function renderDistrictTable(s) {
-      const rows = Object.entries(s.districtBreakdown || {}).sort((a, b) => b[1].collected - a[1].collected);
+      const liveBreakdown = s.districtBreakdown || {};
+      const districtMap = new Map();
+
+      MASTER_DISTRICT_FILES.forEach(f => {
+        const dName = f.replace('.json', '');
+        districtMap.set(dName, { collected: 0, studying: 0, notStudying: 0, willing: 0, schools: {} });
+      });
+
+      Object.entries(liveBreakdown).forEach(([dist, d]) => {
+        const matchedFile = resolveDistrictFileName(dist);
+        const dName = matchedFile ? matchedFile.replace('.json', '') : dist;
+        const existing = districtMap.get(dName) || { collected: 0, studying: 0, notStudying: 0, willing: 0, schools: {} };
+        existing.collected += (d.collected || 0);
+        existing.studying += (d.studying || 0);
+        existing.notStudying += (d.notStudying || 0);
+        existing.willing += (d.willing || 0);
+        if (d.schools) {
+          existing.schools = Object.assign({}, existing.schools, d.schools);
+        }
+        districtMap.set(dName, existing);
+      });
+
+      const rows = Array.from(districtMap.entries()).sort((a, b) => {
+        if (b[1].collected !== a[1].collected) return b[1].collected - a[1].collected;
+        return a[0].localeCompare(b[0]);
+      });
+
       const tbody = document.getElementById('districtBody');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-note">No submissions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-note">No districts found.</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(([district, d], i) => `
-        <tr class="district-row" data-idx="${i}" title="Click to expand school-level progress for ${escapeHtml(district)}">
+        <tr class="district-row" data-idx="${i}" data-district="${escapeHtml(district)}" title="Click to expand school progress for ${escapeHtml(district)}">
           <td style="font-weight:600;">${escapeHtml(district)}</td>
           <td>${d.collected.toLocaleString()}</td>
           <td>${d.studying.toLocaleString()}</td>
@@ -303,16 +494,26 @@
           <td>${(d.willing || 0).toLocaleString()}</td>
         </tr>
         <tr class="school-subrow hidden" data-idx="${i}">
-          <td colspan="5">${schoolRowsHtml(d.schools)}</td>
+          <td colspan="5" class="subrow-content" data-idx="${i}"></td>
         </tr>
       `).join('');
 
       tbody.querySelectorAll('.district-row').forEach(row => {
         row.addEventListener('click', () => {
           const idx = row.getAttribute('data-idx');
+          const districtName = row.getAttribute('data-district');
           const subrow = tbody.querySelector(`.school-subrow[data-idx="${idx}"]`);
-          row.classList.toggle('expanded');
-          subrow.classList.toggle('hidden');
+          const contentEl = subrow.querySelector('.subrow-content');
+
+          const isExpanding = subrow.classList.contains('hidden');
+          row.classList.toggle('expanded', isExpanding);
+          subrow.classList.toggle('hidden', !isExpanding);
+
+          if (isExpanding && !contentEl.getAttribute('data-loaded')) {
+            contentEl.setAttribute('data-loaded', 'true');
+            const distData = districtMap.get(districtName) || {};
+            renderSchoolSubrowContent(districtName, distData.schools, contentEl);
+          }
         });
       });
     }
