@@ -172,6 +172,10 @@
         <label>School *</label>
         <select id="schoolSelect" disabled><option value="">Select district first...</option></select>
       </div>
+      <div class="field" style="min-width: 240px;">
+        <label>🔍 Direct Search (UDISE Code / School / Student / PEN)</label>
+        <input type="text" id="quickSearchInput" placeholder="Type UDISE Code, School, or Student Name..." disabled>
+      </div>
     </div>
     <div id="status"></div>
   </div>
@@ -457,11 +461,15 @@
     document.getElementById('districtSelect').addEventListener('change', async function () {
       const district = this.value;
       const schoolSel = document.getElementById('schoolSelect');
+      const searchInput = document.getElementById('quickSearchInput');
+
       schoolSel.disabled = true;
       schoolSel.innerHTML = '<option value="">Select school...</option>';
+      searchInput.disabled = true;
+      searchInput.value = '';
 
       currentStudents = [];
-      renderTablePrompt('District selected. Please select a school above to view student list.');
+      renderTablePrompt('District selected. Please select a school or type UDISE Code/Name above.');
 
       if (!district) {
         setStatus('', '');
@@ -496,7 +504,8 @@
             return `<option value="${escapeHtml(s.udise || s.school)}">${label}${blockInfo}</option>`;
           }).join('');
         schoolSel.disabled = false;
-        setStatus(`${sorted.length} school(s) found in ${district}. Please select a school.`, '');
+        searchInput.disabled = false;
+        setStatus(`${sorted.length} school(s) found in ${district}. Select school or type UDISE/Name to search.`, '');
       } catch (err) {
         if (requestToken !== currentRequestToken) return;
         setStatus(`Failed to load schools list for ${district}: ${err.message || err}`, 'error');
@@ -506,6 +515,7 @@
     document.getElementById('schoolSelect').addEventListener('change', async function () {
       const district = document.getElementById('districtSelect').value;
       const schoolVal = this.value;
+      document.getElementById('quickSearchInput').value = '';
 
       if (!district || !schoolVal) {
         currentStudents = [];
@@ -539,6 +549,59 @@
         renderTableError(`Failed to load student list: ${err.message || err}`, district, schoolVal);
         setStatus('Error loading student list.', 'error');
       }
+    });
+
+    // Real-time quick filter / search handler (UDISE Code / School / Student / PEN)
+    document.getElementById('quickSearchInput').addEventListener('input', function () {
+      const term = this.value.trim().toLowerCase();
+      const district = document.getElementById('districtSelect').value;
+      const schoolSel = document.getElementById('schoolSelect');
+
+      if (!district || !districtDataCache[district]) return;
+      const allDistrictStudents = districtDataCache[district];
+
+      if (!term) {
+        const schoolVal = schoolSel.value;
+        if (schoolVal === '__ALL__') {
+          currentStudents = allDistrictStudents;
+        } else if (schoolVal) {
+          currentStudents = allDistrictStudents.filter(s =>
+            (s.udise && s.udise === schoolVal) || s.school === schoolVal
+          );
+        } else {
+          currentStudents = [];
+          renderTablePrompt('Please select a school or type UDISE/Name to view student list.');
+          setStatus('', '');
+          return;
+        }
+        renderTable(currentStudents);
+        setStatus(`${currentStudents.length} student(s) found.`, '');
+        return;
+      }
+
+      // Filter all district students by UDISE, School Name, Student Name, PEN, Father Name, Block
+      currentStudents = allDistrictStudents.filter(s =>
+        (s.udise && String(s.udise).toLowerCase().includes(term)) ||
+        (s.school && String(s.school).toLowerCase().includes(term)) ||
+        (s.name && String(s.name).toLowerCase().includes(term)) ||
+        (s.pen && String(s.pen).toLowerCase().includes(term)) ||
+        (s.father && String(s.father).toLowerCase().includes(term)) ||
+        (s.block && String(s.block).toLowerCase().includes(term))
+      );
+
+      // Auto-select in schoolSel if UDISE or School exact/unique match
+      for (let i = 0; i < schoolSel.options.length; i++) {
+        const opt = schoolSel.options[i];
+        if (opt.value && opt.value !== '__ALL__') {
+          if (opt.value.toLowerCase() === term || opt.text.toLowerCase().includes(term)) {
+            schoolSel.value = opt.value;
+            break;
+          }
+        }
+      }
+
+      renderTable(currentStudents);
+      setStatus(`Filtered ${currentStudents.length} student(s) matching "${term}".`, '');
     });
 
     function renderTablePrompt(msg) {
