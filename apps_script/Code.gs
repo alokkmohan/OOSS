@@ -335,20 +335,26 @@ function getSummary() {
     const mode = String(r[CCOL.MODE - 1] || '').trim();
     const reason = String(r[CCOL.REASON - 1] || '').trim();
 
+    const school = String(r[4] || '').trim() || 'Unknown School';
+
     const d = summary.districtBreakdown[district] ||
-      (summary.districtBreakdown[district] = { collected: 0, studying: 0, notStudying: 0, deceased: 0, willing: 0 });
+      (summary.districtBreakdown[district] = { collected: 0, studying: 0, notStudying: 0, deceased: 0, willing: 0, schools: {} });
     d.collected++;
 
-    if (status === 'Studying') { summary.studying++; d.studying++; }
+    const sc = d.schools[school] ||
+      (d.schools[school] = { collected: 0, studying: 0, notStudying: 0, deceased: 0, willing: 0 });
+    sc.collected++;
+
+    if (status === 'Studying') { summary.studying++; d.studying++; sc.studying++; }
     else if (status === 'Not Studying') {
       // Death is recorded as a Q4 reason (not its own top-level status) —
       // pull it into the deceased bucket instead of notStudying, same
       // overlay convention the classification side of this project uses.
       if (reason === 'Death') {
-        summary.deceased++; d.deceased++;
+        summary.deceased++; d.deceased++; sc.deceased++;
       } else {
-        summary.notStudying++; d.notStudying++;
-        if (willing === 'Yes') { summary.willing++; d.willing++; }
+        summary.notStudying++; d.notStudying++; sc.notStudying++;
+        if (willing === 'Yes') { summary.willing++; d.willing++; sc.willing++; }
         else if (willing === 'No') summary.unwilling++;
         if (mode === 'Regular') summary.modeRegular++;
         else if (mode === 'NIOS') summary.modeNios++;

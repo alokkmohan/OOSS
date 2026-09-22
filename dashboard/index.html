@@ -82,10 +82,25 @@
       position: sticky; top: 0; text-align: left; border-bottom: 1px solid var(--bg-card-border);
     }
     td { padding: 10px 14px; border-bottom: 1px solid var(--bg-card-border); }
-    tr:hover td { background: var(--bg-subtle); }
     .empty-note {
       color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 40px;
     }
+
+    .district-row { cursor: pointer; }
+    .district-row td:first-child::before {
+      content: '▸'; display: inline-block; margin-right: 8px; color: var(--accent-blue);
+      transition: transform 0.15s; font-size: 0.85rem;
+    }
+    .district-row.expanded td:first-child::before { transform: rotate(90deg); }
+    .school-subrow td { background: #f8fafc; padding: 0; border-bottom: 1px solid var(--bg-card-border); }
+    .school-subrow.hidden { display: none; }
+    .school-table { width: 100%; border-collapse: collapse; background: #fff; }
+    .school-table th {
+      position: static; background: #f1f5f9; font-size: 0.72rem; color: var(--text-muted);
+      padding: 8px 14px 6px 36px; border-bottom: 1px solid var(--bg-card-border); text-transform: uppercase;
+    }
+    .school-table td { padding: 8px 14px 8px 36px; font-size: 0.82rem; border-bottom: 1px solid rgba(15,23,42,0.04); }
+    .school-table tr:last-child td { border-bottom: none; }
   </style>
 </head>
 <body>
@@ -244,6 +259,34 @@
       });
     }
 
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function schoolRowsHtml(schools) {
+      const entries = Object.entries(schools || {}).sort((a, b) => b[1].collected - a[1].collected);
+      if (!entries.length) return '<div class="empty-note" style="padding:14px;font-size:0.8rem;">No school-level data recorded for this district yet.</div>';
+      return `
+        <table class="school-table">
+          <thead>
+            <tr><th>School Name</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Willing</th></tr>
+          </thead>
+          <tbody>
+            ${entries.map(([school, d]) => `
+              <tr>
+                <td style="font-weight:500;">${escapeHtml(school)}</td>
+                <td>${d.collected.toLocaleString()}</td>
+                <td>${(d.studying || 0).toLocaleString()}</td>
+                <td>${(d.notStudying || 0).toLocaleString()}</td>
+                <td>${(d.willing || 0).toLocaleString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
     function renderDistrictTable(s) {
       const rows = Object.entries(s.districtBreakdown || {}).sort((a, b) => b[1].collected - a[1].collected);
       const tbody = document.getElementById('districtBody');
@@ -251,15 +294,27 @@
         tbody.innerHTML = '<tr><td colspan="5" class="empty-note">No submissions yet.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map(([district, d]) => `
-        <tr>
-          <td style="font-weight:600;">${district}</td>
+      tbody.innerHTML = rows.map(([district, d], i) => `
+        <tr class="district-row" data-idx="${i}" title="Click to expand school-level progress for ${escapeHtml(district)}">
+          <td style="font-weight:600;">${escapeHtml(district)}</td>
           <td>${d.collected.toLocaleString()}</td>
           <td>${d.studying.toLocaleString()}</td>
           <td>${d.notStudying.toLocaleString()}</td>
           <td>${(d.willing || 0).toLocaleString()}</td>
         </tr>
+        <tr class="school-subrow hidden" data-idx="${i}">
+          <td colspan="5">${schoolRowsHtml(d.schools)}</td>
+        </tr>
       `).join('');
+
+      tbody.querySelectorAll('.district-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const idx = row.getAttribute('data-idx');
+          const subrow = tbody.querySelector(`.school-subrow[data-idx="${idx}"]`);
+          row.classList.toggle('expanded');
+          subrow.classList.toggle('hidden');
+        });
+      });
     }
 
     (async function init() {
