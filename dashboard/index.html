@@ -165,7 +165,7 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>District</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Willing</th></tr>
+          <tr><th>District</th><th>Total Students</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Willing</th></tr>
         </thead>
         <tbody id="districtBody"></tbody>
       </table>
@@ -280,6 +280,24 @@
       "SHRAWASTI.json", "SIDDHARTHNAGAR.json", "SITAPUR.json", "SONBHADRA.json", "SULTANPUR.json", "UNNAO.json", "VARANASI.json"
     ];
 
+    const DISTRICT_TARGETS = {
+      "AGRA": 1078, "ALIGARH": 2399, "AMBEDKAR NAGAR": 1212, "AMETHI - CSM NAGAR": 697, "AURAIYA": 461,
+      "AZAMGARH": 1283, "BAGHPAT": 491, "BAHRAICH": 1378, "BALLIA": 1200, "BALRAMPUR": 2018,
+      "BANDA": 361, "BARABANKI": 1275, "BAREILLY": 2228, "BASTI": 1391, "BHADOI": 353,
+      "BIJNOR": 1142, "BUDAUN": 197, "BULANDSHAHR": 1361, "CHANDAULI": 506, "CHITRAKOOT": 464,
+      "DEORIA": 584, "ETAH": 549, "ETAWAH": 1092, "FAIZABAD": 1088, "FARRUKHABAD": 734,
+      "FATEHPUR": 1027, "FIROZABAD": 802, "GAUTAM BUDDHA NAGAR": 1834, "GHAZIABAD": 983, "GHAZIPUR": 1315,
+      "GONDA": 739, "GORAKHPUR": 2229, "HAMIRPUR (U.P.)": 378, "HAPUR (PANCHSHEEL NAGAR)": 612, "HARDOI": 1470,
+      "HATHRAS": 915, "JALAUN": 284, "JAUNPUR": 1833, "JHANSI": 333, "JYOTIBA PHULE NAGAR (AMROHA)": 713,
+      "KANNAUJ": 591, "KANPUR DEHAT": 316, "KANPUR NAGAR": 471, "KASGANJ": 1034, "KAUSHAMBI": 1454,
+      "KHERI": 2855, "KUSHINAGAR": 1269, "LALITPUR": 530, "LUCKNOW": 1680, "MAHARAJGANJ": 2026,
+      "MAHOBA": 1912, "MAINPURI": 881, "MATHURA": 1116, "MAU": 986, "MEERUT": 1805,
+      "MIRZAPUR": 1581, "MORADABAD": 932, "MUZAFFARNAGAR": 906, "PILIBHIT": 875, "PRATAPGARH": 1852,
+      "PRAYAGRAJ": 2150, "RAE BARELI": 1302, "RAMPUR": 794, "SAHARANPUR": 2520, "SAMBHAL (BHIM NAGAR)": 772,
+      "SANT KABIR NAGAR": 796, "SHAHJAHANPUR": 3965, "SHAMLI (PRABUDH NAGAR)": 349, "SHRAWASTI": 383, "SIDDHARTHNAGAR": 4619,
+      "SITAPUR": 1436, "SONBHADRA": 733, "SULTANPUR": 1862, "UNNAO": 721, "VARANASI": 1570
+    };
+
     function resolveDistrictFileName(district) {
       if (!district) return null;
       const target = String(district).trim();
@@ -326,18 +344,22 @@
 
       const tbody = document.getElementById('districtBody');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-note">No districts found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-note">No districts found.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map(([district, d]) => `
-        <tr>
-          <td style="font-weight:600;">${escapeHtml(district)}</td>
-          <td><strong style="color:${d.collected > 0 ? 'var(--primary)' : 'inherit'};">${d.collected.toLocaleString()}</strong></td>
-          <td>${d.studying.toLocaleString()}</td>
-          <td>${d.notStudying.toLocaleString()}</td>
-          <td>${(d.willing || 0).toLocaleString()}</td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = rows.map(([district, d]) => {
+        const totalTarget = DISTRICT_TARGETS[district] || 0;
+        return `
+          <tr>
+            <td style="font-weight:600;">${escapeHtml(district)}</td>
+            <td><strong>${totalTarget.toLocaleString()}</strong></td>
+            <td><strong style="color:${d.collected > 0 ? 'var(--primary)' : 'inherit'};">${d.collected.toLocaleString()}</strong></td>
+            <td>${d.studying.toLocaleString()}</td>
+            <td>${d.notStudying.toLocaleString()}</td>
+            <td>${(d.willing || 0).toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     (async function init() {
