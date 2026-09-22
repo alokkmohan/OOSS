@@ -324,12 +324,15 @@
     async function buildSchoolBreakdown(district, liveSchoolStats) {
       const masterStudents = await loadDistrictMasterStudents(district);
       const schoolMap = new Map();
+      const normMap = new Map();
 
       if (masterStudents && Array.isArray(masterStudents)) {
         masterStudents.forEach(s => {
           const name = (s.school || '').trim() || 'Unknown School';
           const udise = (s.udise || '').trim();
           const key = name;
+          const normKey = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
           if (!schoolMap.has(key)) {
             schoolMap.set(key, {
               school: name,
@@ -340,6 +343,7 @@
               notStudying: 0,
               willing: 0,
             });
+            if (normKey) normMap.set(normKey, key);
           }
           schoolMap.get(key).target++;
         });
@@ -347,10 +351,15 @@
 
       const liveSchools = liveSchoolStats || {};
       Object.entries(liveSchools).forEach(([schName, stats]) => {
-        const key = schName;
-        if (!schoolMap.has(key)) {
-          schoolMap.set(key, {
-            school: schName,
+        const rawName = schName.trim();
+        const normKey = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        let targetKey = rawName;
+
+        if (normMap.has(normKey)) {
+          targetKey = normMap.get(normKey);
+        } else if (!schoolMap.has(targetKey)) {
+          schoolMap.set(targetKey, {
+            school: rawName,
             udise: '',
             target: stats.collected || 0,
             collected: 0,
@@ -359,7 +368,7 @@
             willing: 0,
           });
         }
-        const item = schoolMap.get(key);
+        const item = schoolMap.get(targetKey);
         item.collected = stats.collected || 0;
         item.studying = stats.studying || 0;
         item.notStudying = stats.notStudying || 0;
@@ -386,6 +395,10 @@
 
       const notStartedCount = list.filter(s => s.collected === 0).length;
       const startedCount = list.length - notStartedCount;
+      const totalCollectedInDist = list.reduce((sum, s) => sum + s.collected, 0);
+
+      // Default to showing Collected schools if any data collected, otherwise All
+      let currentFilter = startedCount > 0 ? 'yes' : 'all';
 
       function renderTableRows(filteredList) {
         return filteredList.map(s => {
@@ -403,7 +416,7 @@
             <tr>
               <td style="font-weight:500;">${label}</td>
               <td><strong>${s.target.toLocaleString()}</strong></td>
-              <td><span style="color:${s.collected > 0 ? '#16a34a' : 'var(--text-muted)'};font-weight:${s.collected > 0 ? '600' : 'normal'};">${s.collected.toLocaleString()}</span></td>
+              <td><span style="color:${s.collected > 0 ? '#16a34a' : 'var(--text-muted)'};font-weight:${s.collected > 0 ? '700' : 'normal'};">${s.collected.toLocaleString()}</span></td>
               <td><span style="color:${pending > 0 ? '#dc2626' : 'var(--text-muted)'};">${pending.toLocaleString()}</span></td>
               <td>${statusBadge}</td>
             </tr>
@@ -414,18 +427,18 @@
       containerEl.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; flex-wrap:wrap; background:rgba(15,23,42,0.03); padding:10px; border-radius:8px; border:1px solid var(--border);">
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <button class="status-btn active" data-filter="all" style="padding:5px 12px; font-size:0.78rem; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:var(--primary); color:#fff; font-weight:500;">
-              All Schools (${list.length})
+            <button class="status-btn ${currentFilter === 'yes' ? 'active' : ''}" data-filter="yes" style="padding:6px 12px; font-size:0.78rem; border-radius:6px; border:1px solid ${currentFilter === 'yes' ? '#16a34a' : '#86efac'}; cursor:pointer; background:${currentFilter === 'yes' ? '#16a34a' : 'rgba(22,163,74,0.1)'}; color:${currentFilter === 'yes' ? '#fff' : '#16a34a'}; font-weight:600;">
+              🟢 Collected / Started (${startedCount} schools - ${totalCollectedInDist} entries)
             </button>
-            <button class="status-btn" data-filter="no" style="padding:5px 12px; font-size:0.78rem; border-radius:6px; border:1px solid #fca5a5; cursor:pointer; background:rgba(220,38,38,0.1); color:#dc2626; font-weight:600;">
-              ❌ Not Started (No) (${notStartedCount})
+            <button class="status-btn ${currentFilter === 'no' ? 'active' : ''}" data-filter="no" style="padding:6px 12px; font-size:0.78rem; border-radius:6px; border:1px solid #fca5a5; cursor:pointer; background:rgba(220,38,38,0.1); color:#dc2626; font-weight:600;">
+              ❌ Not Started (${notStartedCount} schools)
             </button>
-            <button class="status-btn" data-filter="yes" style="padding:5px 12px; font-size:0.78rem; border-radius:6px; border:1px solid #86efac; cursor:pointer; background:rgba(22,163,74,0.1); color:#16a34a; font-weight:600;">
-              🟢 Started (Yes) (${startedCount})
+            <button class="status-btn ${currentFilter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 12px; font-size:0.78rem; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:var(--surface); color:var(--text-main); font-weight:500;">
+              📋 All Schools (${list.length})
             </button>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <input type="text" class="subrow-search-input" placeholder="🔍 Search school or UDISE..." style="padding:6px 12px; font-size:0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text-main); width:230px; outline:none;" />
+            <input type="text" class="subrow-search-input" placeholder="🔍 Search school or UDISE..." style="padding:6px 12px; font-size:0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text-main); width:220px; outline:none;" />
           </div>
         </div>
         <table class="school-table">
@@ -439,14 +452,12 @@
             </tr>
           </thead>
           <tbody class="school-table-body">
-            ${renderTableRows(list)}
           </tbody>
         </table>`;
 
       const searchInput = containerEl.querySelector('.subrow-search-input');
       const tableBody = containerEl.querySelector('.school-table-body');
       const filterBtns = containerEl.querySelectorAll('.status-btn');
-      let currentFilter = 'all';
 
       function updateFilteredList() {
         const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -460,7 +471,7 @@
 
         tableBody.innerHTML = filtered.length
           ? renderTableRows(filtered)
-          : `<tr><td colspan="5" class="empty-note" style="padding:14px;text-align:center;color:var(--text-muted);">No matching schools found.</td></tr>`;
+          : `<tr><td colspan="5" class="empty-note" style="padding:14px;text-align:center;color:var(--text-muted);">No matching schools found for this filter.</td></tr>`;
       }
 
       filterBtns.forEach(btn => {
@@ -470,29 +481,38 @@
             if (b.dataset.filter === 'all') {
               b.style.background = 'var(--surface)';
               b.style.color = 'var(--text-main)';
+              b.style.borderColor = 'var(--border)';
             } else if (b.dataset.filter === 'no') {
               b.style.background = 'rgba(220,38,38,0.1)';
               b.style.color = '#dc2626';
+              b.style.borderColor = '#fca5a5';
             } else if (b.dataset.filter === 'yes') {
               b.style.background = 'rgba(22,163,74,0.1)';
               b.style.color = '#16a34a';
+              b.style.borderColor = '#86efac';
             }
           });
           btn.classList.add('active');
           if (btn.dataset.filter === 'all') {
             btn.style.background = 'var(--primary)';
             btn.style.color = '#fff';
+            btn.style.borderColor = 'var(--primary)';
           } else if (btn.dataset.filter === 'no') {
             btn.style.background = '#dc2626';
             btn.style.color = '#fff';
+            btn.style.borderColor = '#dc2626';
           } else if (btn.dataset.filter === 'yes') {
             btn.style.background = '#16a34a';
             btn.style.color = '#fff';
+            btn.style.borderColor = '#16a34a';
           }
           currentFilter = btn.dataset.filter;
           updateFilteredList();
         });
       });
+
+      // Initial render with default filter
+      updateFilteredList();
 
       if (searchInput) {
         searchInput.addEventListener('input', updateFilteredList);
