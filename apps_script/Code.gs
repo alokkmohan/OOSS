@@ -336,23 +336,18 @@ function getSummary() {
     const reason = String(r[CCOL.REASON - 1] || '').trim();
 
     const d = summary.districtBreakdown[district] ||
-      (summary.districtBreakdown[district] = { collected: 0, studying: 0, notStudying: 0, deceased: 0, schools: {} });
+      (summary.districtBreakdown[district] = { collected: 0, studying: 0, notStudying: 0, deceased: 0 });
     d.collected++;
 
-    const school = String(r[4] || '').trim() || 'Unknown';
-    const sc = d.schools[school] ||
-      (d.schools[school] = { collected: 0, studying: 0, notStudying: 0, deceased: 0 });
-    sc.collected++;
-
-    if (status === 'Studying') { summary.studying++; d.studying++; sc.studying++; }
+    if (status === 'Studying') { summary.studying++; d.studying++; }
     else if (status === 'Not Studying') {
       // Death is recorded as a Q4 reason (not its own top-level status) —
       // pull it into the deceased bucket instead of notStudying, same
       // overlay convention the classification side of this project uses.
       if (reason === 'Death') {
-        summary.deceased++; d.deceased++; sc.deceased++;
+        summary.deceased++; d.deceased++;
       } else {
-        summary.notStudying++; d.notStudying++; sc.notStudying++;
+        summary.notStudying++; d.notStudying++;
         if (willing === 'Yes') summary.willing++;
         else if (willing === 'No') summary.unwilling++;
         if (mode === 'Regular') summary.modeRegular++;

@@ -86,21 +86,6 @@
     .empty-note {
       color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 40px;
     }
-    .district-row { cursor: pointer; }
-    .district-row td:first-child::before {
-      content: '▸'; display: inline-block; margin-right: 6px; color: var(--text-muted);
-      transition: transform 0.15s;
-    }
-    .district-row.expanded td:first-child::before { transform: rotate(90deg); }
-    .school-subrow td { background: var(--bg-subtle); padding: 0; border-bottom: none; }
-    .school-subrow.hidden { display: none; }
-    .school-table { width: 100%; border-collapse: collapse; }
-    .school-table th {
-      position: static; background: transparent; font-size: 0.72rem;
-      padding: 8px 14px 4px 34px; border-bottom: 1px solid var(--bg-card-border);
-    }
-    .school-table td { padding: 7px 14px 7px 34px; font-size: 0.82rem; border-bottom: 1px solid rgba(15,23,42,0.04); }
-    .school-table tr:last-child td { border-bottom: none; }
   </style>
 </head>
 <body>
@@ -257,28 +242,6 @@
       });
     }
 
-    function schoolRowsHtml(schools) {
-      const entries = Object.entries(schools || {}).sort((a, b) => b[1].collected - a[1].collected);
-      if (!entries.length) return '<div class="empty-note">No school-level data.</div>';
-      return `
-        <table class="school-table">
-          <thead>
-            <tr><th>School</th><th>Collected</th><th>Studying</th><th>Not Studying</th><th>Death</th></tr>
-          </thead>
-          <tbody>
-            ${entries.map(([school, d]) => `
-              <tr>
-                <td>${school}</td>
-                <td>${d.collected.toLocaleString()}</td>
-                <td>${d.studying.toLocaleString()}</td>
-                <td>${d.notStudying.toLocaleString()}</td>
-                <td>${d.deceased.toLocaleString()}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>`;
-    }
-
     function renderDistrictTable(s) {
       const rows = Object.entries(s.districtBreakdown).sort((a, b) => b[1].collected - a[1].collected);
       const tbody = document.getElementById('districtBody');
@@ -286,27 +249,15 @@
         tbody.innerHTML = '<tr><td colspan="5" class="empty-note">No submissions yet.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map(([district, d], i) => `
-        <tr class="district-row" data-idx="${i}">
+      tbody.innerHTML = rows.map(([district, d]) => `
+        <tr>
           <td style="font-weight:600;">${district}</td>
           <td>${d.collected.toLocaleString()}</td>
           <td>${d.studying.toLocaleString()}</td>
           <td>${d.notStudying.toLocaleString()}</td>
           <td>${d.deceased.toLocaleString()}</td>
         </tr>
-        <tr class="school-subrow hidden" data-idx="${i}">
-          <td colspan="5">${schoolRowsHtml(d.schools)}</td>
-        </tr>
       `).join('');
-
-      tbody.querySelectorAll('.district-row').forEach(row => {
-        row.addEventListener('click', () => {
-          const idx = row.getAttribute('data-idx');
-          const subrow = tbody.querySelector(`.school-subrow[data-idx="${idx}"]`);
-          row.classList.toggle('expanded');
-          subrow.classList.toggle('hidden');
-        });
-      });
     }
 
     (async function init() {
