@@ -384,26 +384,27 @@
         return;
       }
 
+      const notStartedCount = list.filter(s => s.collected === 0).length;
+      const startedCount = list.length - notStartedCount;
+
       function renderTableRows(filteredList) {
         return filteredList.map(s => {
           const pending = Math.max(s.target - s.collected, 0);
           let statusBadge = '';
           if (s.collected === 0) {
-            statusBadge = '<span style="color:#dc2626;font-weight:600;font-size:0.75rem;">🔴 Not Started</span>';
+            statusBadge = '<span style="color:#dc2626;font-weight:600;font-size:0.75rem;background:rgba(220,38,38,0.08);padding:3px 8px;border-radius:12px;display:inline-block;">❌ No (Not Started)</span>';
           } else if (pending === 0) {
-            statusBadge = '<span style="color:#16a34a;font-weight:600;font-size:0.75rem;">🟢 Completed</span>';
+            statusBadge = '<span style="color:#16a34a;font-weight:600;font-size:0.75rem;background:rgba(22,163,74,0.08);padding:3px 8px;border-radius:12px;display:inline-block;">✅ Yes (Completed)</span>';
           } else {
-            statusBadge = '<span style="color:#ea580c;font-weight:600;font-size:0.75rem;">🟡 In Progress</span>';
+            statusBadge = '<span style="color:#0284c7;font-weight:600;font-size:0.75rem;background:rgba(2,132,199,0.08);padding:3px 8px;border-radius:12px;display:inline-block;">🟢 Yes (In Progress)</span>';
           }
           const label = s.udise ? `${escapeHtml(s.school)} <span style="color:var(--text-muted);font-size:0.75rem;font-weight:normal;">(${escapeHtml(s.udise)})</span>` : escapeHtml(s.school);
           return `
             <tr>
               <td style="font-weight:500;">${label}</td>
               <td><strong>${s.target.toLocaleString()}</strong></td>
-              <td>${s.collected.toLocaleString()}</td>
-              <td>${pending.toLocaleString()}</td>
-              <td>${(s.studying || 0).toLocaleString()}</td>
-              <td>${(s.notStudying || 0).toLocaleString()}</td>
+              <td><span style="color:${s.collected > 0 ? '#16a34a' : 'var(--text-muted)'};font-weight:${s.collected > 0 ? '600' : 'normal'};">${s.collected.toLocaleString()}</span></td>
+              <td><span style="color:${pending > 0 ? '#dc2626' : 'var(--text-muted)'};">${pending.toLocaleString()}</span></td>
               <td>${statusBadge}</td>
             </tr>
           `;
@@ -411,22 +412,30 @@
       }
 
       containerEl.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
-          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:500;">
-            Showing <strong class="school-count-label" style="color:var(--text-main);">${list.length}</strong> schools in <strong>${escapeHtml(district)}</strong>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; flex-wrap:wrap; background:rgba(15,23,42,0.03); padding:10px; border-radius:8px; border:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <button class="status-btn active" data-filter="all" style="padding:5px 12px; font-size:0.78rem; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:var(--primary); color:#fff; font-weight:500;">
+              All Schools (${list.length})
+            </button>
+            <button class="status-btn" data-filter="no" style="padding:5px 12px; font-size:0.78rem; border-radius:6px; border:1px solid #fca5a5; cursor:pointer; background:rgba(220,38,38,0.1); color:#dc2626; font-weight:600;">
+              ❌ Not Started (No) (${notStartedCount})
+            </button>
+            <button class="status-btn" data-filter="yes" style="padding:5px 12px; font-size:0.78rem; border-radius:6px; border:1px solid #86efac; cursor:pointer; background:rgba(22,163,74,0.1); color:#16a34a; font-weight:600;">
+              🟢 Started (Yes) (${startedCount})
+            </button>
           </div>
-          <input type="text" class="subrow-search-input" placeholder="🔍 Search school or UDISE..." style="padding:6px 12px; font-size:0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text-main); width:240px; outline:none;" />
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="text" class="subrow-search-input" placeholder="🔍 Search school or UDISE..." style="padding:6px 12px; font-size:0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text-main); width:230px; outline:none;" />
+          </div>
         </div>
         <table class="school-table">
           <thead>
             <tr>
               <th>School Name</th>
-              <th>Target</th>
-              <th>Collected</th>
-              <th>Pending</th>
-              <th>Studying</th>
-              <th>Not Studying</th>
-              <th>Status</th>
+              <th>No. of Dropout (Total Students)</th>
+              <th>Total Collected</th>
+              <th>Total Pending</th>
+              <th>Collection Started? (Yes/No)</th>
             </tr>
           </thead>
           <tbody class="school-table-body">
@@ -436,19 +445,57 @@
 
       const searchInput = containerEl.querySelector('.subrow-search-input');
       const tableBody = containerEl.querySelector('.school-table-body');
-      const countLabel = containerEl.querySelector('.school-count-label');
+      const filterBtns = containerEl.querySelectorAll('.status-btn');
+      let currentFilter = 'all';
+
+      function updateFilteredList() {
+        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const filtered = list.filter(s => {
+          const matchesQuery = s.school.toLowerCase().includes(q) || (s.udise && s.udise.toLowerCase().includes(q));
+          let matchesFilter = true;
+          if (currentFilter === 'no') matchesFilter = (s.collected === 0);
+          else if (currentFilter === 'yes') matchesFilter = (s.collected > 0);
+          return matchesQuery && matchesFilter;
+        });
+
+        tableBody.innerHTML = filtered.length
+          ? renderTableRows(filtered)
+          : `<tr><td colspan="5" class="empty-note" style="padding:14px;text-align:center;color:var(--text-muted);">No matching schools found.</td></tr>`;
+      }
+
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterBtns.forEach(b => {
+            b.classList.remove('active');
+            if (b.dataset.filter === 'all') {
+              b.style.background = 'var(--surface)';
+              b.style.color = 'var(--text-main)';
+            } else if (b.dataset.filter === 'no') {
+              b.style.background = 'rgba(220,38,38,0.1)';
+              b.style.color = '#dc2626';
+            } else if (b.dataset.filter === 'yes') {
+              b.style.background = 'rgba(22,163,74,0.1)';
+              b.style.color = '#16a34a';
+            }
+          });
+          btn.classList.add('active');
+          if (btn.dataset.filter === 'all') {
+            btn.style.background = 'var(--primary)';
+            btn.style.color = '#fff';
+          } else if (btn.dataset.filter === 'no') {
+            btn.style.background = '#dc2626';
+            btn.style.color = '#fff';
+          } else if (btn.dataset.filter === 'yes') {
+            btn.style.background = '#16a34a';
+            btn.style.color = '#fff';
+          }
+          currentFilter = btn.dataset.filter;
+          updateFilteredList();
+        });
+      });
 
       if (searchInput) {
-        searchInput.addEventListener('input', () => {
-          const q = searchInput.value.toLowerCase().trim();
-          const filtered = list.filter(s =>
-            s.school.toLowerCase().includes(q) || (s.udise && s.udise.toLowerCase().includes(q))
-          );
-          tableBody.innerHTML = filtered.length
-            ? renderTableRows(filtered)
-            : `<tr><td colspan="7" class="empty-note" style="padding:12px;text-align:center;">No matching schools found.</td></tr>`;
-          if (countLabel) countLabel.textContent = filtered.length;
-        });
+        searchInput.addEventListener('input', updateFilteredList);
       }
     }
 
