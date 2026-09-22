@@ -299,289 +299,23 @@
       return `${target}.json`;
     }
 
-    const districtMasterCache = {};
-    async function loadDistrictMasterStudents(district) {
-      if (districtMasterCache[district]) return districtMasterCache[district];
-      const fileName = resolveDistrictFileName(district);
-      const paths = [
-        `../collect/data/${encodeURIComponent(fileName)}`,
-        `collect/data/${encodeURIComponent(fileName)}`,
-        `/collect/data/${encodeURIComponent(fileName)}`
-      ];
-      for (const p of paths) {
-        try {
-          const res = await fetch(p);
-          if (res.ok) {
-            const data = await res.json();
-            districtMasterCache[district] = data;
-            return data;
-          }
-        } catch (e) {}
-      }
-      return null;
-    }
-
-    async function buildSchoolBreakdown(district, liveSchoolStats) {
-      const masterStudents = await loadDistrictMasterStudents(district);
-      const schoolMap = new Map();
-      const normMap = new Map();
-
-      if (masterStudents && Array.isArray(masterStudents)) {
-        masterStudents.forEach(s => {
-          const name = (s.school || '').trim() || 'Unknown School';
-          const udise = (s.udise || '').trim();
-          const key = name;
-          const normKey = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-          if (!schoolMap.has(key)) {
-            schoolMap.set(key, {
-              school: name,
-              udise: udise,
-              target: 0,
-              collected: 0,
-              studying: 0,
-              notStudying: 0,
-              willing: 0,
-            });
-            if (normKey) normMap.set(normKey, key);
-          }
-          schoolMap.get(key).target++;
-        });
-      }
-
-      const liveSchools = liveSchoolStats || {};
-      Object.entries(liveSchools).forEach(([schName, stats]) => {
-        const rawName = schName.trim();
-        const normKey = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        let targetKey = rawName;
-
-        if (normMap.has(normKey)) {
-          targetKey = normMap.get(normKey);
-        } else if (!schoolMap.has(targetKey)) {
-          schoolMap.set(targetKey, {
-            school: rawName,
-            udise: '',
-            target: stats.collected || 0,
-            collected: 0,
-            studying: 0,
-            notStudying: 0,
-            willing: 0,
-          });
-        }
-        const item = schoolMap.get(targetKey);
-        item.collected = stats.collected || 0;
-        item.studying = stats.studying || 0;
-        item.notStudying = stats.notStudying || 0;
-        item.willing = stats.willing || 0;
-      });
-
-      const list = Array.from(schoolMap.values());
-      list.sort((a, b) => {
-        if (b.collected !== a.collected) return b.collected - a.collected;
-        return b.target - a.target;
-      });
-      return list;
-    }
-
-    const liveDistrictStudentsCache = {};
-    async function fetchDistrictLiveStudents(district) {
-      if (liveDistrictStudentsCache[district]) return liveDistrictStudentsCache[district];
-      try {
-        const url = `${SCRIPT_URL}?action=students&district=${encodeURIComponent(district)}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const json = await res.json();
-          if (json && json.ok && Array.isArray(json.data)) {
-            liveDistrictStudentsCache[district] = json.data;
-            return json.data;
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch live students for " + district, e);
-      }
-      return [];
-    }
-
-    async function renderSchoolSubrowContent(district, liveSchoolStatsFromSummary, containerEl) {
-      containerEl.innerHTML = `<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:0.85rem;"><span class="spinner" style="display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:6px;"></span> Loading school progress for ${escapeHtml(district)}...</div>`;
-
-      let liveSchoolStats = liveSchoolStatsFromSummary || {};
-
-      // Dynamically fetch student-level collection entries for 100% accurate school stats
-      const liveStudents = await fetchDistrictLiveStudents(district);
-      if (liveStudents && liveStudents.length > 0) {
-        const computedStats = {};
-        liveStudents.forEach(s => {
-          if (s.currentStatus) {
-            const sch = (s.school || '').trim();
-            if (!computedStats[sch]) {
-              computedStats[sch] = { collected: 0, studying: 0, notStudying: 0, willing: 0 };
-            }
-            const sc = computedStats[sch];
-            sc.collected++;
-            if (s.currentStatus === 'Studying') sc.studying++;
-            else if (s.currentStatus === 'Not Studying') {
-              sc.notStudying++;
-              if (s.willing === 'Yes') sc.willing++;
-            }
-          }
-        });
-        liveSchoolStats = computedStats;
-      }
-
-      const list = await buildSchoolBreakdown(district, liveSchoolStats);
-
-      if (!list || !list.length) {
-        containerEl.innerHTML = `<div class="empty-note" style="padding:14px;font-size:0.8rem;">No school data found for ${escapeHtml(district)}.</div>`;
-        return;
-      }
-
-      const notStartedCount = list.filter(s => s.collected === 0).length;
-      const startedCount = list.length - notStartedCount;
-      const totalCollectedInDist = list.reduce((sum, s) => sum + s.collected, 0);
-
-      // Default to showing Collected schools if any data collected, otherwise All
-      let currentFilter = startedCount > 0 ? 'yes' : 'all';
-
-      function renderTableRows(filteredList) {
-        return filteredList.map(s => {
-          const pending = Math.max(s.target - s.collected, 0);
-          let statusBadge = '';
-          if (s.collected === 0) {
-            statusBadge = '<span style="color:#dc2626;font-weight:600;font-size:0.75rem;background:rgba(220,38,38,0.08);padding:3px 8px;border-radius:12px;display:inline-block;">❌ No (Not Started)</span>';
-          } else if (pending === 0) {
-            statusBadge = '<span style="color:#16a34a;font-weight:600;font-size:0.75rem;background:rgba(22,163,74,0.08);padding:3px 8px;border-radius:12px;display:inline-block;">✅ Yes (Completed)</span>';
-          } else {
-            statusBadge = '<span style="color:#0284c7;font-weight:600;font-size:0.75rem;background:rgba(2,132,199,0.08);padding:3px 8px;border-radius:12px;display:inline-block;">🟢 Yes (In Progress)</span>';
-          }
-          const label = s.udise ? `${escapeHtml(s.school)} <span style="color:var(--text-muted);font-size:0.75rem;font-weight:normal;">(${escapeHtml(s.udise)})</span>` : escapeHtml(s.school);
-          return `
-            <tr>
-              <td style="font-weight:500;">${label}</td>
-              <td><strong>${s.target.toLocaleString()}</strong></td>
-              <td><span style="color:${s.collected > 0 ? '#16a34a' : 'var(--text-muted)'};font-weight:${s.collected > 0 ? '700' : 'normal'};">${s.collected.toLocaleString()}</span></td>
-              <td><span style="color:${pending > 0 ? '#dc2626' : 'var(--text-muted)'};">${pending.toLocaleString()}</span></td>
-              <td>${statusBadge}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      containerEl.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; flex-wrap:wrap; background:rgba(15,23,42,0.03); padding:10px; border-radius:8px; border:1px solid var(--border);">
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <button class="status-btn ${currentFilter === 'yes' ? 'active' : ''}" data-filter="yes" style="padding:6px 12px; font-size:0.78rem; border-radius:6px; border:1px solid ${currentFilter === 'yes' ? '#16a34a' : '#86efac'}; cursor:pointer; background:${currentFilter === 'yes' ? '#16a34a' : 'rgba(22,163,74,0.1)'}; color:${currentFilter === 'yes' ? '#fff' : '#16a34a'}; font-weight:600;">
-              🟢 Collected / Started (${startedCount} schools - ${totalCollectedInDist} entries)
-            </button>
-            <button class="status-btn ${currentFilter === 'no' ? 'active' : ''}" data-filter="no" style="padding:6px 12px; font-size:0.78rem; border-radius:6px; border:1px solid #fca5a5; cursor:pointer; background:rgba(220,38,38,0.1); color:#dc2626; font-weight:600;">
-              ❌ Not Started (${notStartedCount} schools)
-            </button>
-            <button class="status-btn ${currentFilter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 12px; font-size:0.78rem; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:var(--surface); color:var(--text-main); font-weight:500;">
-              📋 All Schools (${list.length})
-            </button>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <input type="text" class="subrow-search-input" placeholder="🔍 Search school or UDISE..." style="padding:6px 12px; font-size:0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text-main); width:220px; outline:none;" />
-          </div>
-        </div>
-        <table class="school-table">
-          <thead>
-            <tr>
-              <th>School Name</th>
-              <th>No. of Dropout (Total Students)</th>
-              <th>Total Collected</th>
-              <th>Total Pending</th>
-              <th>Collection Started? (Yes/No)</th>
-            </tr>
-          </thead>
-          <tbody class="school-table-body">
-          </tbody>
-        </table>`;
-
-      const searchInput = containerEl.querySelector('.subrow-search-input');
-      const tableBody = containerEl.querySelector('.school-table-body');
-      const filterBtns = containerEl.querySelectorAll('.status-btn');
-
-      function updateFilteredList() {
-        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        const filtered = list.filter(s => {
-          const matchesQuery = s.school.toLowerCase().includes(q) || (s.udise && s.udise.toLowerCase().includes(q));
-          let matchesFilter = true;
-          if (currentFilter === 'no') matchesFilter = (s.collected === 0);
-          else if (currentFilter === 'yes') matchesFilter = (s.collected > 0);
-          return matchesQuery && matchesFilter;
-        });
-
-        tableBody.innerHTML = filtered.length
-          ? renderTableRows(filtered)
-          : `<tr><td colspan="5" class="empty-note" style="padding:14px;text-align:center;color:var(--text-muted);">No matching schools found for this filter.</td></tr>`;
-      }
-
-      filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          filterBtns.forEach(b => {
-            b.classList.remove('active');
-            if (b.dataset.filter === 'all') {
-              b.style.background = 'var(--surface)';
-              b.style.color = 'var(--text-main)';
-              b.style.borderColor = 'var(--border)';
-            } else if (b.dataset.filter === 'no') {
-              b.style.background = 'rgba(220,38,38,0.1)';
-              b.style.color = '#dc2626';
-              b.style.borderColor = '#fca5a5';
-            } else if (b.dataset.filter === 'yes') {
-              b.style.background = 'rgba(22,163,74,0.1)';
-              b.style.color = '#16a34a';
-              b.style.borderColor = '#86efac';
-            }
-          });
-          btn.classList.add('active');
-          if (btn.dataset.filter === 'all') {
-            btn.style.background = 'var(--primary)';
-            btn.style.color = '#fff';
-            btn.style.borderColor = 'var(--primary)';
-          } else if (btn.dataset.filter === 'no') {
-            btn.style.background = '#dc2626';
-            btn.style.color = '#fff';
-            btn.style.borderColor = '#dc2626';
-          } else if (btn.dataset.filter === 'yes') {
-            btn.style.background = '#16a34a';
-            btn.style.color = '#fff';
-            btn.style.borderColor = '#16a34a';
-          }
-          currentFilter = btn.dataset.filter;
-          updateFilteredList();
-        });
-      });
-
-      // Initial render with default filter
-      updateFilteredList();
-
-      if (searchInput) {
-        searchInput.addEventListener('input', updateFilteredList);
-      }
-    }
-
     function renderDistrictTable(s) {
       const liveBreakdown = s.districtBreakdown || {};
       const districtMap = new Map();
 
       MASTER_DISTRICT_FILES.forEach(f => {
         const dName = f.replace('.json', '');
-        districtMap.set(dName, { collected: 0, studying: 0, notStudying: 0, willing: 0, schools: {} });
+        districtMap.set(dName, { collected: 0, studying: 0, notStudying: 0, willing: 0 });
       });
 
       Object.entries(liveBreakdown).forEach(([dist, d]) => {
         const matchedFile = resolveDistrictFileName(dist);
         const dName = matchedFile ? matchedFile.replace('.json', '') : dist;
-        const existing = districtMap.get(dName) || { collected: 0, studying: 0, notStudying: 0, willing: 0, schools: {} };
+        const existing = districtMap.get(dName) || { collected: 0, studying: 0, notStudying: 0, willing: 0 };
         existing.collected += (d.collected || 0);
         existing.studying += (d.studying || 0);
         existing.notStudying += (d.notStudying || 0);
         existing.willing += (d.willing || 0);
-        if (d.schools) {
-          existing.schools = Object.assign({}, existing.schools, d.schools);
-        }
         districtMap.set(dName, existing);
       });
 
@@ -595,37 +329,15 @@
         tbody.innerHTML = '<tr><td colspan="5" class="empty-note">No districts found.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map(([district, d], i) => `
-        <tr class="district-row" data-idx="${i}" data-district="${escapeHtml(district)}" title="Click to expand school progress for ${escapeHtml(district)}">
+      tbody.innerHTML = rows.map(([district, d]) => `
+        <tr>
           <td style="font-weight:600;">${escapeHtml(district)}</td>
-          <td>${d.collected.toLocaleString()}</td>
+          <td><strong style="color:${d.collected > 0 ? 'var(--primary)' : 'inherit'};">${d.collected.toLocaleString()}</strong></td>
           <td>${d.studying.toLocaleString()}</td>
           <td>${d.notStudying.toLocaleString()}</td>
           <td>${(d.willing || 0).toLocaleString()}</td>
         </tr>
-        <tr class="school-subrow hidden" data-idx="${i}">
-          <td colspan="5" class="subrow-content" data-idx="${i}"></td>
-        </tr>
       `).join('');
-
-      tbody.querySelectorAll('.district-row').forEach(row => {
-        row.addEventListener('click', () => {
-          const idx = row.getAttribute('data-idx');
-          const districtName = row.getAttribute('data-district');
-          const subrow = tbody.querySelector(`.school-subrow[data-idx="${idx}"]`);
-          const contentEl = subrow.querySelector('.subrow-content');
-
-          const isExpanding = subrow.classList.contains('hidden');
-          row.classList.toggle('expanded', isExpanding);
-          subrow.classList.toggle('hidden', !isExpanding);
-
-          if (isExpanding && !contentEl.getAttribute('data-loaded')) {
-            contentEl.setAttribute('data-loaded', 'true');
-            const distData = districtMap.get(districtName) || {};
-            renderSchoolSubrowContent(districtName, distData.schools, contentEl);
-          }
-        });
-      });
     }
 
     (async function init() {
