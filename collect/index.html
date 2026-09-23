@@ -436,25 +436,64 @@
     let districtDataCache = {};  // district -> array of all student objects in district
     let currentRequestToken = 0;
 
-    async function loadDistrictData(district) {
-      if (districtDataCache[district]) return districtDataCache[district];
+    function applyPendingQueueToStudents(studentsList) {
+      if (!Array.isArray(studentsList) || studentsList.length === 0) return;
+      const queue = getPendingQueue();
+      if (!queue || queue.length === 0) return;
 
-      // 1. Try ultra-fast static CDN file first (~0.05s)
-      try {
-        const res = await fetch(`data/${encodeURIComponent(district)}.json`);
-        if (res.ok) {
-          const students = await res.json();
-          districtDataCache[district] = students;
-          return students;
+      const queueMap = new Map();
+      queue.forEach(item => {
+        if (item.pen) queueMap.set(String(item.pen).trim(), item);
+      });
+
+      studentsList.forEach(s => {
+        const penStr = String(s.pen || '').trim();
+        if (queueMap.has(penStr)) {
+          const pending = queueMap.get(penStr);
+          s.currentStatus = pending.currentStatus || s.currentStatus || '';
+          s.willing = pending.willing || s.willing || '';
+          s.mode = pending.mode || s.mode || '';
+          s.reason = pending.reason || s.reason || '';
         }
-      } catch (e) {
-        console.warn('Static CDN fetch fallback to Apps Script API:', e);
+      });
+    }
+
+    async function loadDistrictData(district) {
+      if (districtDataCache[district]) {
+        applyPendingQueueToStudents(districtDataCache[district]);
+        return districtDataCache[district];
       }
 
-      // 2. Fallback to Apps Script API if static file is unavailable
-      const body = await fetchJsonWithRetry(API_URL + '?action=students&district=' + encodeURIComponent(district));
-      const students = body.data || [];
-      districtDataCache[district] = students;
+      let students = [];
+
+      // 1. Fetch live student list from Apps Script API (contains live status from Field Data Collection sheet)
+      try {
+        const body = await fetchJsonWithRetry(API_URL + '?action=students&district=' + encodeURIComponent(district));
+        if (body && body.ok && Array.isArray(body.data) && body.data.length > 0) {
+          students = body.data;
+        }
+      } catch (e) {
+        console.warn('Apps Script API fetch error, trying static CDN file fallback:', e);
+      }
+
+      // 2. Fallback to static CDN file if Apps Script API fetch fails/offline
+      if (!students || students.length === 0) {
+        try {
+          const res = await fetch(`data/${encodeURIComponent(district)}.json`);
+          if (res.ok) {
+            students = await res.json();
+          }
+        } catch (e) {
+          console.error('Static CDN fetch error:', e);
+        }
+      }
+
+      // 3. Apply any un-synced entries saved locally in browser storage queue
+      applyPendingQueueToStudents(students);
+
+      if (students && students.length > 0) {
+        districtDataCache[district] = students;
+      }
       return students;
     }
 
