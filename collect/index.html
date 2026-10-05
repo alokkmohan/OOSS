@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Field Data Collection</title>
+  <title>Field Data Collection (v1.36)</title>
   <style>
     :root {
       --navy: #1c3866; --navy-dark: #142845; --green: #16a34a; --red: #dc2626;
@@ -150,7 +150,7 @@
 
   <div class="page-header">
     <h1>Out-of-School Student: Field Data Collection</h1>
-    <p class="sub">District चुनें, फिर list में से student का status भरें। दुबारा भरने पर पुराना entry update हो जाएगा।</p>
+    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.36</span></p>
   </div>
 
   <div class="card">
@@ -230,6 +230,16 @@
         </div>
       </div>
 
+      <div class="q-group hidden" id="targetClassGroup">
+        <label class="qlabel">किस कक्षा में प्रवेश लेना चाहते हैं? *</label>
+        <div class="radio-row" id="targetClassRadios">
+          <div class="radio-opt" data-value="9">कक्षा 9</div>
+          <div class="radio-opt" data-value="10">कक्षा 10</div>
+          <div class="radio-opt" data-value="11">कक्षा 11</div>
+          <div class="radio-opt" data-value="12">कक्षा 12</div>
+        </div>
+      </div>
+
       <div class="q-group hidden" id="q4group">
         <label class="qlabel">न पढ़ने का कारण</label>
         <select id="reasonSelect">
@@ -283,6 +293,10 @@
     </div>
   </div>
 
+  <footer style="text-align:center;padding:16px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);margin-top:20px;">
+    <div>Field Data Collection Portal &bull; System Version: v1.36 (Build 36)</div>
+  </footer>
+
   <script>
     // Bump if the Apps Script deployment is ever recreated (new deployment
     // = new URL). This page's own URL (ooss.dataimpact.in/collect/) never
@@ -293,7 +307,7 @@
     let currentDistrictStudents = []; // all students for selected district
     let currentStudents = [];       // filtered view for current school selection
     let activeStudent = null;
-    let answers = { currentStatus: '', willing: '', mode: '', reason: '' };
+    let answers = { currentStatus: '', willing: '', mode: '', targetClass: '', reason: '' };
 
     function setStatus(msg, cls) {
       const el = document.getElementById('status');
@@ -453,6 +467,8 @@
           s.currentStatus = pending.currentStatus || s.currentStatus || '';
           s.willing = pending.willing || s.willing || '';
           s.mode = pending.mode || s.mode || '';
+          s.targetClass = pending.targetClass || s.targetClass || '';
+          if (pending.eligibleClass) s.eligibleClass = pending.eligibleClass;
           s.reason = pending.reason || s.reason || '';
         }
       });
@@ -700,6 +716,7 @@
         currentStatus: activeStudent.currentStatus || '',
         willing: activeStudent.willing || '',
         mode: activeStudent.mode || '',
+        targetClass: activeStudent.targetClass || activeStudent.eligibleClass || '',
         reason: activeStudent.reason || '',
       };
       document.getElementById('modalName').textContent = activeStudent.name;
@@ -724,17 +741,22 @@
     function refreshRadios() {
       setRadioGroup('q1', answers.currentStatus, (val) => {
         answers.currentStatus = val;
-        answers.willing = ''; answers.mode = ''; answers.reason = '';
+        answers.willing = ''; answers.mode = ''; answers.targetClass = ''; answers.reason = '';
         refreshRadios();
       });
       setRadioGroup('q2', answers.willing, (val) => {
         answers.willing = val;
+        if (val !== 'Yes') {
+          answers.mode = ''; answers.targetClass = '';
+        }
         refreshRadios();
       });
       setRadioGroup('q3', answers.mode, (val) => { answers.mode = val; refreshRadios(); });
+      setRadioGroup('targetClassRadios', answers.targetClass, (val) => { answers.targetClass = val; refreshRadios(); });
 
       document.getElementById('q2group').classList.toggle('hidden', answers.currentStatus !== 'Not Studying');
       document.getElementById('q3group').classList.toggle('hidden', answers.willing !== 'Yes');
+      document.getElementById('targetClassGroup').classList.toggle('hidden', answers.willing !== 'Yes');
       document.getElementById('q4group').classList.toggle('hidden', answers.willing !== 'No');
     }
 
@@ -792,6 +814,10 @@
         document.getElementById('modalError').textContent = 'कृपया अध्ययन का माध्यम चुनें (Regular / NIOS)।';
         return;
       }
+      if (answers.willing === 'Yes' && !answers.targetClass) {
+        document.getElementById('modalError').textContent = 'किस कक्षा में प्रवेश लेना चाहते हैं? कृपया कक्षा 9, 10, 11 या 12 चुनें।';
+        return;
+      }
       if (answers.willing === 'No' && !answers.reason) {
         document.getElementById('modalError').textContent = 'कृपया एक कारण चुनें।';
         return;
@@ -811,7 +837,8 @@
         fatherName: activeStudent.father,
         subStatus: activeStudent.subStatus,
         studentClass: activeStudent.studentClass,
-        eligibleClass: activeStudent.eligibleClass,
+        eligibleClass: answers.targetClass || activeStudent.eligibleClass || '',
+        targetClass: answers.targetClass || '',
         academicYear: activeStudent.academicYear,
         currentStatus: answers.currentStatus,
         willing: answers.currentStatus === 'Not Studying' ? answers.willing : '',
@@ -826,6 +853,8 @@
       targetStudent.currentStatus = answers.currentStatus;
       targetStudent.willing = payload.willing;
       targetStudent.mode = answers.mode;
+      targetStudent.eligibleClass = payload.eligibleClass;
+      targetStudent.targetClass = answers.targetClass;
       targetStudent.reason = answers.reason;
       renderTable(currentStudents);
 
