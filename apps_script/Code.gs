@@ -411,12 +411,16 @@ function submitEntry(payload) {
   }
 
   const sh = collectionSheet_();
+  // Eligible Class to Import should ONLY have a value if the student is Not Studying and Willing to study!
+  const isWilling = (payload.currentStatus === 'Not Studying' && payload.willing === 'Yes');
+  const targetClassToSave = isWilling ? (payload.targetClass || payload.eligibleClass || '') : '';
+
   const rowValues = [
     payload.pen, payload.district || '', payload.block || '', payload.udise || '', payload.school || '',
     payload.studentName || '', payload.sex || '', payload.mobile || '', payload.motherName || '', payload.fatherName || '',
-    payload.subStatus || '', payload.studentClass || '', payload.eligibleClass || '', payload.academicYear || '',
+    payload.subStatus || '', payload.studentClass || '', targetClassToSave, payload.academicYear || '',
     payload.currentStatus || '', payload.willing || '',
-    payload.mode || '', payload.reason || '', payload.collectedBy || '',
+    isWilling ? (payload.mode || '') : '', payload.reason || '', payload.collectedBy || '',
     payload.remarks || '', new Date(),
   ];
 

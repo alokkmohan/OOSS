@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Field Data Collection (v1.37)</title>
+  <title>Field Data Collection (v1.38)</title>
   <style>
     :root {
       --navy: #1c3866; --navy-dark: #142845; --green: #16a34a; --red: #dc2626;
@@ -150,7 +150,7 @@
 
   <div class="page-header">
     <h1>Out-of-School Student: Field Data Collection</h1>
-    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.37</span></p>
+    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.38</span></p>
   </div>
 
   <div class="card">
@@ -301,7 +301,7 @@
   </div>
 
   <footer style="text-align:center;padding:16px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);margin-top:20px;">
-    <div>Field Data Collection Portal &bull; System Version: v1.37 (Build 36)</div>
+    <div>Field Data Collection Portal &bull; System Version: v1.38 (Build 36)</div>
   </footer>
 
   <script>
@@ -473,10 +473,11 @@
           const pending = queueMap.get(penStr);
           s.currentStatus = pending.currentStatus || s.currentStatus || '';
           s.willing = pending.willing || s.willing || '';
-          s.mode = pending.mode || s.mode || '';
-          s.targetClass = pending.targetClass || s.targetClass || '';
-          if (pending.eligibleClass) s.eligibleClass = pending.eligibleClass;
-          s.reason = pending.reason || s.reason || '';
+          const isWilling = (s.currentStatus === 'Not Studying' && s.willing === 'Yes');
+          s.mode = isWilling ? (pending.mode || s.mode || '') : '';
+          s.targetClass = isWilling ? (pending.targetClass || pending.eligibleClass || s.targetClass || '') : '';
+          s.eligibleClass = s.targetClass;
+          s.reason = (s.currentStatus === 'Not Studying' && s.willing === 'No') ? (pending.reason || s.reason || '') : '';
         }
       });
     }
@@ -515,6 +516,17 @@
       applyPendingQueueToStudents(students);
 
       if (students && students.length > 0) {
+        // Only retain eligibleClass if student is confirmed Not Studying and Willing to resume studies!
+        students.forEach(s => {
+          const isWilling = (s.currentStatus === 'Not Studying' && s.willing === 'Yes');
+          if (!isWilling) {
+            s.eligibleClass = '';
+            s.targetClass = '';
+          } else {
+            s.targetClass = s.targetClass || s.eligibleClass || '';
+            s.eligibleClass = s.targetClass;
+          }
+        });
         districtDataCache[district] = students;
       }
       return students;
@@ -837,7 +849,10 @@
           <td>${escapeHtml(s.mobile)}</td>
           <td>${escapeHtml(s.mother)}</td>
           <td>${escapeHtml(s.father)}</td>
-          <td>${escapeHtml(s.studentClass)}</td>
+          <td>
+            ${escapeHtml(s.studentClass)}
+            ${(s.currentStatus === 'Not Studying' && s.willing === 'Yes' && (s.targetClass || s.eligibleClass)) ? `<div style="font-size:0.7rem;color:var(--navy);font-weight:700;margin-top:2px;">इच्छुक: Cl. ${escapeHtml(s.targetClass || s.eligibleClass)}</div>` : ''}
+          </td>
           <td>${statusBadge(s.currentStatus, s.reason)}</td>
           <td><button onclick="openModal(${i})">वर्तमान स्थिति</button></td>
         </tr>
@@ -848,12 +863,14 @@
 
     function openModal(index) {
       activeStudent = displayedStudents[index];
+      if (!activeStudent) return;
+      const isWilling = (activeStudent.currentStatus === 'Not Studying' && activeStudent.willing === 'Yes');
       answers = {
         currentStatus: activeStudent.currentStatus || '',
         willing: activeStudent.willing || '',
-        mode: activeStudent.mode || '',
-        targetClass: activeStudent.targetClass || activeStudent.eligibleClass || '',
-        reason: activeStudent.reason || '',
+        mode: isWilling ? (activeStudent.mode || '') : '',
+        targetClass: isWilling ? (activeStudent.targetClass || activeStudent.eligibleClass || '') : '',
+        reason: (activeStudent.currentStatus === 'Not Studying' && activeStudent.willing === 'No') ? (activeStudent.reason || '') : '',
       };
       document.getElementById('modalName').textContent = activeStudent.name;
       document.getElementById('modalMeta').textContent =
@@ -960,6 +977,9 @@
       }
       document.getElementById('modalError').textContent = '';
 
+      const isWillingToStudy = (answers.currentStatus === 'Not Studying' && answers.willing === 'Yes');
+      const selectedTargetClass = isWillingToStudy ? (answers.targetClass || '') : '';
+
       const payload = {
         district: activeStudent.district || document.getElementById('districtSelect').value,
         block: activeStudent.block,
@@ -973,13 +993,13 @@
         fatherName: activeStudent.father,
         subStatus: activeStudent.subStatus,
         studentClass: activeStudent.studentClass,
-        eligibleClass: answers.targetClass || activeStudent.eligibleClass || '',
-        targetClass: answers.targetClass || '',
+        eligibleClass: selectedTargetClass, // Only populated if user selects class to study in! Empty string otherwise.
+        targetClass: selectedTargetClass,
         academicYear: activeStudent.academicYear,
         currentStatus: answers.currentStatus,
         willing: answers.currentStatus === 'Not Studying' ? answers.willing : '',
-        mode: answers.mode,
-        reason: answers.reason,
+        mode: isWillingToStudy ? answers.mode : '',
+        reason: (answers.currentStatus === 'Not Studying' && answers.willing === 'No') ? answers.reason : '',
         collectedBy: document.getElementById('collectedBy').value,
         remarks: document.getElementById('remarksBox').value,
       };
@@ -988,10 +1008,10 @@
       const targetStudent = activeStudent;
       targetStudent.currentStatus = answers.currentStatus;
       targetStudent.willing = payload.willing;
-      targetStudent.mode = answers.mode;
-      targetStudent.eligibleClass = payload.eligibleClass;
-      targetStudent.targetClass = answers.targetClass;
-      targetStudent.reason = answers.reason;
+      targetStudent.mode = payload.mode;
+      targetStudent.eligibleClass = selectedTargetClass;
+      targetStudent.targetClass = selectedTargetClass;
+      targetStudent.reason = payload.reason;
       renderTable(currentStudents);
 
       const district = document.getElementById('districtSelect').value;
