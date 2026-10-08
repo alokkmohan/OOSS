@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Field Data Collection (v1.36)</title>
+  <title>Field Data Collection (v1.37)</title>
   <style>
     :root {
       --navy: #1c3866; --navy-dark: #142845; --green: #16a34a; --red: #dc2626;
@@ -150,7 +150,7 @@
 
   <div class="page-header">
     <h1>Out-of-School Student: Field Data Collection</h1>
-    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.36</span></p>
+    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.37</span></p>
   </div>
 
   <div class="card">
@@ -176,6 +176,13 @@
         <label>🔍 Direct Search (UDISE Code / School / Student / PEN)</label>
         <input type="text" id="quickSearchInput" placeholder="Type UDISE Code, School, or Student Name..." disabled>
       </div>
+    </div>
+    <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;">
+      <label style="display: inline-flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 600; cursor: pointer; user-select: none;">
+        <input type="checkbox" id="chkHideCompleted" checked style="width: 17px; height: 17px; accent-color: var(--navy); cursor: pointer;">
+        <span>केवल शेष (Not Recorded) छात्र दिखाएँ &bull; पूर्ण हो चुके छात्र व विद्यालय छिपाएँ</span>
+      </label>
+      <div id="filterCounts" style="font-size: 0.78rem; color: var(--muted); font-weight: 600;"></div>
     </div>
     <div id="status"></div>
   </div>
@@ -294,7 +301,7 @@
   </div>
 
   <footer style="text-align:center;padding:16px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);margin-top:20px;">
-    <div>Field Data Collection Portal &bull; System Version: v1.36 (Build 36)</div>
+    <div>Field Data Collection Portal &bull; System Version: v1.37 (Build 36)</div>
   </footer>
 
   <script>
@@ -513,6 +520,114 @@
       return students;
     }
 
+    let displayedStudents = [];
+
+    function isStudentRecorded(s) {
+      if (!s) return false;
+      const st = (s.currentStatus || '').trim();
+      const r = (s.reason || '').trim();
+      if (r === 'Death') return true;
+      if (st === 'Studying' || st === 'Not Studying' || st === 'Verified' || st === 'Admitted') {
+        return true;
+      }
+      return false;
+    }
+
+    function updateCountsDisplay() {
+      const filterCounts = document.getElementById('filterCounts');
+      if (!filterCounts) return;
+      const district = document.getElementById('districtSelect').value;
+      if (!district || !districtDataCache[district]) {
+        filterCounts.innerHTML = '';
+        return;
+      }
+      const all = districtDataCache[district];
+      const total = all.length;
+      const pending = all.filter(s => !isStudentRecorded(s)).length;
+      const completed = total - pending;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+      filterCounts.innerHTML = `<span style="color:var(--orange);">शेष (Not Recorded): <strong>${pending}</strong></span> &bull; <span style="color:var(--green);">पूर्ण: <strong>${completed}</strong> (${pct}%)</span> &bull; कुल: <strong>${total}</strong>`;
+    }
+
+    function updateSchoolDropdown(district, selectedSchoolToKeep = null) {
+      if (!district || !districtDataCache[district]) return;
+      const students = districtDataCache[district];
+      const hideCompleted = document.getElementById('chkHideCompleted')?.checked;
+      const schoolSel = document.getElementById('schoolSelect');
+
+      // Compute stats per school
+      const schoolMap = new Map();
+      students.forEach(s => {
+        const schoolName = (s.school || '').trim();
+        const udiseCode = (s.udise || '').trim();
+        const blockName = (s.block || '').trim();
+        if (!schoolName) return;
+        const key = udiseCode || schoolName;
+        if (!schoolMap.has(key)) {
+          schoolMap.set(key, { udise: udiseCode, school: schoolName, block: blockName, total: 0, pending: 0 });
+        }
+        const item = schoolMap.get(key);
+        item.total++;
+        if (!isStudentRecorded(s)) {
+          item.pending++;
+        }
+      });
+
+      const allSchools = Array.from(schoolMap.values()).sort((a, b) => a.school.localeCompare(b.school));
+      const totalPendingInDistrict = students.filter(s => !isStudentRecorded(s)).length;
+      const totalInDistrict = students.length;
+
+      // Filter visible schools (exclude schools where all students are marked if hideCompleted is checked)
+      const visibleSchools = hideCompleted
+        ? allSchools.filter(s => s.pending > 0)
+        : allSchools;
+
+      const currentVal = selectedSchoolToKeep !== null ? selectedSchoolToKeep : schoolSel.value;
+
+      if (visibleSchools.length === 0) {
+        if (totalPendingInDistrict === 0) {
+          schoolSel.innerHTML = '<option value="">-- 🎉 All schools completed in district! --</option>';
+          setStatus(`🎉 बधाई! ${escapeHtml(district)} जनपद के सभी ${totalInDistrict} छात्रों का विवरण पूर्ण हो चुका है। कोई छात्र शेष नहीं है।`, 'success');
+        } else {
+          schoolSel.innerHTML = '<option value="">No schools with pending students</option>';
+        }
+        schoolSel.disabled = true;
+        updateCountsDisplay();
+        return;
+      }
+
+      let opts = '<option value="">Select school...</option>';
+      if (hideCompleted) {
+        opts += `<option value="__ALL__">-- All schools in district (${totalPendingInDistrict} शेष छात्र) --</option>`;
+      } else {
+        opts += `<option value="__ALL__">-- All schools in district (${totalPendingInDistrict}/${totalInDistrict} शेष छात्र) --</option>`;
+      }
+
+      visibleSchools.forEach(s => {
+        const label = s.udise ? `${escapeHtml(s.udise)} — ${escapeHtml(s.school)}` : escapeHtml(s.school);
+        const countInfo = hideCompleted ? ` (${s.pending} शेष)` : ` (${s.pending}/${s.total} शेष)`;
+        const blockInfo = s.block ? ` [${escapeHtml(s.block)}]` : '';
+        opts += `<option value="${escapeHtml(s.udise || s.school)}">${label}${countInfo}${blockInfo}</option>`;
+      });
+
+      schoolSel.innerHTML = opts;
+      schoolSel.disabled = false;
+
+      // Maintain selection if still visible
+      const isStillVisible = visibleSchools.some(s => (s.udise || s.school) === currentVal) || currentVal === '__ALL__';
+      if (currentVal && isStillVisible) {
+        schoolSel.value = currentVal;
+      } else if (currentVal && !isStillVisible && currentVal !== '') {
+        // School was fully completed and is now hidden!
+        schoolSel.value = '';
+        currentStudents = [];
+        renderTablePrompt('✓ इस विद्यालय के सभी छात्र पूर्ण हो चुके हैं और यह विद्यालय सूची से छिपा दिया गया है। कृपया अगला विद्यालय चुनें।');
+        setStatus('✓ चयनित विद्यालय के सभी छात्र पूर्ण हो चुके हैं। सूची से विद्यालय हटा दिया गया है।', 'success');
+      }
+
+      updateCountsDisplay();
+    }
+
     document.getElementById('districtSelect').addEventListener('change', async function () {
       const district = this.value;
       const schoolSel = document.getElementById('schoolSelect');
@@ -528,6 +643,7 @@
 
       if (!district) {
         setStatus('', '');
+        updateCountsDisplay();
         return;
       }
 
@@ -539,28 +655,16 @@
 
         if (requestToken !== currentRequestToken) return;
 
-        const schools = new Map();
-        students.forEach(s => {
-          const schoolName = (s.school || '').trim();
-          const udiseCode = (s.udise || '').trim();
-          const blockName = (s.block || '').trim();
-          if (schoolName) {
-            const key = udiseCode || schoolName;
-            if (!schools.has(key)) schools.set(key, { udise: udiseCode, school: schoolName, block: blockName });
-          }
-        });
-        const sorted = Array.from(schools.values()).sort((a, b) => a.school.localeCompare(b.school));
-
-        schoolSel.innerHTML = '<option value="">Select school...</option>' +
-          '<option value="__ALL__">-- All schools in district (' + students.length + ' students) --</option>' +
-          sorted.map(s => {
-            const label = s.udise ? `${escapeHtml(s.udise)} — ${escapeHtml(s.school)}` : escapeHtml(s.school);
-            const blockInfo = s.block ? ` (${escapeHtml(s.block)})` : '';
-            return `<option value="${escapeHtml(s.udise || s.school)}">${label}${blockInfo}</option>`;
-          }).join('');
-        schoolSel.disabled = false;
+        updateSchoolDropdown(district);
         searchInput.disabled = false;
-        setStatus(`${sorted.length} school(s) found in ${district}. Select school or type UDISE/Name to search.`, '');
+
+        const hideCompleted = document.getElementById('chkHideCompleted')?.checked;
+        const pendingCount = students.filter(s => !isStudentRecorded(s)).length;
+        if (hideCompleted) {
+          setStatus(`${pendingCount} छात्र शेष (Not Recorded) हैं। विद्यालय चुनें या सीधे खोजें।`, '');
+        } else {
+          setStatus(`${students.length} कुल छात्र मिले (${pendingCount} शेष)। विद्यालय चुनें या खोजें।`, '');
+        }
       } catch (err) {
         if (requestToken !== currentRequestToken) return;
         setStatus(`Failed to load schools list for ${district}: ${err.message || err}`, 'error');
@@ -598,7 +702,13 @@
         }
 
         renderTable(currentStudents);
-        setStatus(`${currentStudents.length} student(s) found for ${selectedOptionText}.`, '');
+        const visibleCount = displayedStudents.length;
+        const hideCompleted = document.getElementById('chkHideCompleted')?.checked;
+        if (hideCompleted) {
+          setStatus(`${visibleCount} शेष (Not Recorded) छात्र मिले for ${selectedOptionText}.`, '');
+        } else {
+          setStatus(`${currentStudents.length} छात्र मिले for ${selectedOptionText}.`, '');
+        }
       } catch (err) {
         if (requestToken !== currentRequestToken) return;
         renderTableError(`Failed to load student list: ${err.message || err}`, district, schoolVal);
@@ -630,7 +740,8 @@
           return;
         }
         renderTable(currentStudents);
-        setStatus(`${currentStudents.length} student(s) found.`, '');
+        const visibleCount = displayedStudents.length;
+        setStatus(`${visibleCount} student(s) found.`, '');
         return;
       }
 
@@ -656,7 +767,20 @@
       }
 
       renderTable(currentStudents);
-      setStatus(`Filtered ${currentStudents.length} student(s) matching "${term}".`, '');
+      const visibleCount = displayedStudents.length;
+      setStatus(`Filtered ${visibleCount} student(s) matching "${term}".`, '');
+    });
+
+    document.getElementById('chkHideCompleted').addEventListener('change', function () {
+      const district = document.getElementById('districtSelect').value;
+      if (!district || !districtDataCache[district]) return;
+
+      const schoolVal = document.getElementById('schoolSelect').value;
+      updateSchoolDropdown(district, schoolVal);
+
+      if (currentStudents && currentStudents.length > 0) {
+        renderTable(currentStudents);
+      }
     });
 
     function renderTablePrompt(msg) {
@@ -687,12 +811,22 @@
     }
 
     function renderTable(list) {
+      const hideCompleted = document.getElementById('chkHideCompleted')?.checked;
+      const visible = hideCompleted ? list.filter(s => !isStudentRecorded(s)) : list;
+      displayedStudents = visible;
+
       const tbody = document.getElementById('tbody');
-      if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="12" style="color:var(--muted);padding:20px;text-align:center;">No students found.</td></tr>';
+      if (!visible.length) {
+        if (hideCompleted && list.length > 0) {
+          tbody.innerHTML = '<tr><td colspan="12" style="color:var(--green);padding:30px;text-align:center;font-weight:600;">🎉 इस चयन के सभी छात्र मार्क (अपडेट) हो चुके हैं! कोई छात्र शेष नहीं है।<br><span style="font-size:0.8rem;color:var(--muted);font-weight:normal;">(पहले भरे हुए छात्रों को देखने के लिए ऊपर चेकबॉक्स अनचेक करें)</span></td></tr>';
+        } else {
+          tbody.innerHTML = '<tr><td colspan="12" style="color:var(--muted);padding:20px;text-align:center;">No students found.</td></tr>';
+        }
+        updateCountsDisplay();
         return;
       }
-      tbody.innerHTML = list.map((s, i) => `
+
+      tbody.innerHTML = visible.map((s, i) => `
         <tr>
           <td>${escapeHtml(s.block)}</td>
           <td>${escapeHtml(s.udise)}</td>
@@ -708,10 +842,12 @@
           <td><button onclick="openModal(${i})">वर्तमान स्थिति</button></td>
         </tr>
       `).join('');
+
+      updateCountsDisplay();
     }
 
     function openModal(index) {
-      activeStudent = currentStudents[index];
+      activeStudent = displayedStudents[index];
       answers = {
         currentStatus: activeStudent.currentStatus || '',
         willing: activeStudent.willing || '',
@@ -857,6 +993,9 @@
       targetStudent.targetClass = answers.targetClass;
       targetStudent.reason = answers.reason;
       renderTable(currentStudents);
+
+      const district = document.getElementById('districtSelect').value;
+      updateSchoolDropdown(district);
 
       closeModal();
       showSaveLoader(targetStudent.name);
