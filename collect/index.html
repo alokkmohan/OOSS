@@ -150,7 +150,7 @@
 
   <div class="page-header">
     <h1>Out-of-School Student: Field Data Collection</h1>
-    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.38</span></p>
+    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.38</span><span id="pendingBadge" onclick="manualSyncPending()" style="display:none; background:#d97706; color:#fff; font-size:0.75rem; font-weight:700; padding:2px 10px; border-radius:10px; margin-left:6px; cursor:pointer;" title="Click to sync with Google Sheet now"></span></p>
   </div>
 
   <div class="card">
@@ -354,11 +354,29 @@
       const badgeEl = document.getElementById('pendingBadge');
       if (badgeEl) {
         if (queue.length > 0) {
-          badgeEl.textContent = ` (${queue.length} un-synced entries saved locally)`;
+          badgeEl.textContent = `⚠️ ${queue.length} Pending (Click to Sync Now)`;
           badgeEl.style.display = 'inline-block';
         } else {
           badgeEl.style.display = 'none';
         }
+      }
+    }
+
+    async function manualSyncPending() {
+      const queue = getPendingQueue();
+      if (!queue.length) {
+        alert('All marked students are synced with Google Sheet!');
+        return;
+      }
+      setStatus(`Syncing ${queue.length} pending student(s) to Google Sheet...`, '');
+      await syncPendingSubmissions();
+      const rem = getPendingQueue();
+      if (rem.length === 0) {
+        alert('All entries synced successfully to Google Sheet!');
+        setStatus('All pending entries saved to Google Sheet successfully!', 'success');
+      } else {
+        alert(`${rem.length} entries still pending sync. Please ensure backend permissions are active.`);
+        setStatus(`Sync failed for ${rem.length} entries. Backend permission needed.`, 'warning');
       }
     }
 
@@ -441,6 +459,7 @@
         ALL_DISTRICTS.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
 
       document.getElementById('loadingOverlay').style.display = 'none';
+      updatePendingBadge();
 
       fetchJsonWithRetry(API_URL + '?action=districts').then(body => {
         if (body.ok && Array.isArray(body.data) && body.data.length > 0) {
