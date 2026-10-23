@@ -36,9 +36,10 @@ const COLLECTION_HEADERS = [
   'Student Sub Status', 'Last Class', 'Eligible Class to Import', 'Academic Year',
   'Current Status', 'Willing to Resume Studies', 'Mode (Regular/NIOS)',
   'Reason', 'Collected By', 'Remarks', 'Last Updated',
+  'Date of Birth (DOB)', 'Aadhaar Number',
 ];
 // Column indices (1-indexed) within COLLECTION_HEADERS, for readability.
-const CCOL = { PEN: 1, STATUS: 15, WILLING: 16, MODE: 17, REASON: 18, UPDATED: 21 };
+const CCOL = { PEN: 1, STATUS: 15, WILLING: 16, MODE: 17, REASON: 18, UPDATED: 21, DOB: 22, AADHAAR: 23 };
 
 /**
  * This is a pure JSON API — the actual form UI is hosted separately on
@@ -382,6 +383,13 @@ function collectionSheet_() {
     sh.getRange(1, 1, 1, COLLECTION_HEADERS.length)
       .setBackground('#1c3866').setFontColor('#ffffff').setFontWeight('bold');
     sh.setFrozenRows(1);
+  } else {
+    // Auto-expand headers if DOB and Aadhaar columns not present yet
+    if (sh.getLastColumn() < COLLECTION_HEADERS.length) {
+      sh.getRange(1, 1, 1, COLLECTION_HEADERS.length).setValues([COLLECTION_HEADERS]);
+      sh.getRange(1, 1, 1, COLLECTION_HEADERS.length)
+        .setBackground('#1c3866').setFontColor('#ffffff').setFontWeight('bold');
+    }
   }
   return sh;
 }
@@ -443,6 +451,8 @@ function submitEntry(payload) {
     // Eligible Class to Import should ONLY have a value if the student is Not Studying and Willing to study!
     const isWilling = (payload.currentStatus === 'Not Studying' && payload.willing === 'Yes');
     const targetClassToSave = isWilling ? (payload.targetClass || payload.eligibleClass || '') : '';
+    const dobToSave = isWilling ? (payload.dob || payload.studentDob || '') : '';
+    const aadhaarToSave = isWilling ? (payload.aadhaar || payload.studentAadhaar || '') : '';
 
     const rowValues = [
       payload.pen, payload.district || '', payload.block || '', payload.udise || '', payload.school || '',
@@ -451,6 +461,7 @@ function submitEntry(payload) {
       payload.currentStatus || '', payload.willing || '',
       isWilling ? (payload.mode || '') : '', payload.reason || '', payload.collectedBy || '',
       payload.remarks || '', new Date(),
+      dobToSave, aadhaarToSave,
     ];
 
     const existingRow = findRowByPen_(sh, payload.pen);
