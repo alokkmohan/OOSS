@@ -150,7 +150,7 @@
 
   <div class="page-header">
     <h1>Out-of-School Student: Field Data Collection</h1>
-    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.39</span><span id="pendingBadge" onclick="manualSyncPending()" style="display:none; background:#d97706; color:#fff; font-size:0.75rem; font-weight:700; padding:2px 10px; border-radius:10px; margin-left:6px; cursor:pointer;" title="Click to sync with Google Sheet now"></span></p>
+    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.40</span><span id="pendingBadge" onclick="manualSyncPending()" style="display:none; background:#d97706; color:#fff; font-size:0.75rem; font-weight:700; padding:2px 10px; border-radius:10px; margin-left:6px; cursor:pointer;" title="Click to sync with Google Sheet now"></span></p>
   </div>
 
   <div class="card">
@@ -248,14 +248,14 @@
       </div>
 
       <div class="q-group hidden" id="dobGroup">
-        <label class="qlabel">छात्र की जन्म तिथि (DOB) *</label>
+        <label class="qlabel">छात्र की जन्म तिथि (DOB) <span style="font-size:0.78rem;font-weight:normal;color:var(--muted);">(वैकल्पिक / यदि उपलब्ध हो)</span></label>
         <input type="date" id="studentDob" style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; box-sizing: border-box; background: #fff;">
       </div>
 
       <div class="q-group hidden" id="aadhaarGroup">
-        <label class="qlabel">छात्र का आधार नंबर (12 अंक) *</label>
-        <input type="text" id="studentAadhaar" maxlength="12" placeholder="12 अंकों का आधार नंबर दर्ज करें" style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; box-sizing: border-box; background: #fff;" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 12)">
-        <div style="font-size:0.75rem; color:var(--muted); margin-top:3px;">केवल 12 अंकों की संख्या (बिना स्पेस)</div>
+        <label class="qlabel">छात्र का आधार नंबर <span style="font-size:0.78rem;font-weight:normal;color:var(--muted);">(वैकल्पिक / यदि उपलब्ध हो)</span></label>
+        <input type="text" id="studentAadhaar" maxlength="12" placeholder="12 अंकों का आधार नंबर (वैकल्पिक)" style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; box-sizing: border-box; background: #fff;" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 12)">
+        <div style="font-size:0.75rem; color:var(--muted); margin-top:3px;">यदि आधार उपलब्ध हो तो 12 अंक भरें, अन्यथा खाली छोड़ दें।</div>
       </div>
 
       <div class="q-group hidden" id="q4group">
@@ -312,7 +312,7 @@
   </div>
 
   <footer style="text-align:center;padding:16px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);margin-top:20px;">
-    <div>Field Data Collection Portal &bull; System Version: v1.39 (Build 39)</div>
+    <div>Field Data Collection Portal &bull; System Version: v1.40 (Build 40)</div>
   </footer>
 
   <script>
@@ -1019,12 +1019,10 @@
       const selectedAadhaar = isWillingToStudy ? document.getElementById('studentAadhaar').value.trim() : '';
 
       if (isWillingToStudy) {
-        if (!selectedDob) {
-          document.getElementById('modalError').textContent = 'कृपया छात्र की जन्म तिथि (DOB) दर्ज करें।';
-          return;
-        }
-        if (!selectedAadhaar || selectedAadhaar.length !== 12) {
-          document.getElementById('modalError').textContent = 'कृपया छात्र का 12 अंकों का वैध आधार नंबर दर्ज करें।';
+        // DOB is optional
+        // Aadhaar is optional; only validate format if user entered something
+        if (selectedAadhaar && selectedAadhaar.length !== 12) {
+          document.getElementById('modalError').textContent = 'यदि आधार नंबर भर रहे हैं, तो 12 अंकों का वैध नंबर दर्ज करें या इसे खाली छोड़ दें।';
           return;
         }
       }
