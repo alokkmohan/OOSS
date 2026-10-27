@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIOS Centre छात्र सूची</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Mukta:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --paper:#f3f5f4; --sheet:#ffffff; --ink:#15212a; --muted:#56656c; --rule:#d5dcd9; --field:#f8faf9;
+  --accent:#e08e0b; --accent-ink:#241500; --teal:#17656e; --teal-soft:#e2efee; --on-teal:#ffffff;
+  --warn:#b2401f; --ok:#2f7a3d;
+  --f-display:"Mukta","Hind",system-ui,sans-serif;
+  --f-body:"Hind",system-ui,"Segoe UI",sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 56px;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:12px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.1;margin:0}
+h1 small{display:block;font-family:var(--f-body);font-weight:500;font-size:.95rem;color:var(--muted);margin-top:4px}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.out{background:none;border:1.5px solid var(--ink);color:var(--ink);border-radius:8px;padding:6px 14px;font-weight:600}
+
+/* login */
+.login{max-width:420px;width:100%;margin:6vh auto 0;background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:28px;display:grid;gap:16px}
+.login h2{font-family:var(--f-display);font-size:1.4rem;margin:0}
+.login p{margin:0;color:var(--muted);font-size:.95rem}
+.fld{display:grid;gap:4px}
+.fld span{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.fld input{font:inherit;font-family:var(--f-data);font-size:1.1rem;padding:11px 12px;border:2px solid var(--rule);border-radius:8px;background:var(--field);color:var(--ink);width:100%}
+.login .star{font-size:.88rem;color:var(--warn);border-top:1px solid var(--rule);padding-top:12px}
+.go{background:var(--teal);color:var(--on-teal);border:0;border-radius:10px;padding:13px;font-weight:700;font-size:1.05rem}
+.go:disabled{opacity:.6;cursor:wait}
+.msg{font-size:.92rem;color:var(--muted)} .msg.err{color:var(--warn);font-weight:600} .msg.ok{color:var(--ok)}
+
+/* centre card */
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+@media (max-width:640px){.card{grid-template-columns:1fr}}
+.card h2{font-family:var(--f-display);font-size:1.35rem;margin:0;line-height:1.2}
+.card .sub{color:var(--muted);font-size:.95rem}
+.code{border:2px solid var(--teal);border-radius:10px;padding:10px 16px;text-align:center}
+.code span{display:block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.code b{font-family:var(--f-data);font-size:1.6rem;font-weight:500;color:var(--teal);letter-spacing:.04em}
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tabs button{border:2px solid var(--rule);background:var(--sheet);color:var(--ink);padding:9px 18px;border-radius:10px;text-align:left}
+.tabs button b{display:block;font-family:var(--f-display);font-size:1.1rem}
+.tabs button span{font-size:.85rem;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.tabs button[aria-selected="true"] span{color:var(--on-teal)}
+
+.bar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:14px 18px}
+.stats{display:flex;flex-wrap:wrap;gap:8px 28px}
+.stats div span{display:block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stats div b{font-family:var(--f-data);font-size:1.6rem;font-weight:500;font-variant-numeric:tabular-nums}
+.dl{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:12px 20px;font-weight:700;font-size:1.05rem}
+.dl:disabled{opacity:.45;cursor:not-allowed}
+
+.tbl{overflow:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);max-height:70vh}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{position:sticky;top:0;background:var(--teal-soft);font-weight:600}
+td.n,th.n{text-align:right;font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.empty{padding:36px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>NIOS Centre छात्र सूची<small>Out of School students · NIOS Centre Mapping · Uttar Pradesh</small></h1>
+    <button type="button" class="out" id="logout" hidden>Logout</button>
+  </header>
+
+  <form class="login" id="loginView" autocomplete="on">
+    <h2>Centre Login</h2>
+    <p>अपने centre (school) का UDISE code डालें। Password भी UDISE code ही है।</p>
+    <label class="fld"><span>User ID (UDISE)</span><input id="uid" name="username" inputmode="numeric" maxlength="11" placeholder="जैसे 09151714173" required></label>
+    <label class="fld"><span>Password</span><input id="pwd" name="password" type="password" required></label>
+    <button type="submit" class="go" id="go">Login</button>
+    <div class="msg" id="lmsg" role="status"></div>
+    <p class="star">* अभी केवल NIOS द्वारा verified (मान्यता प्राप्त) 213 centres ही login कर सकते हैं।</p>
+  </form>
+
+  <div id="appView" hidden>
+    <div style="display:grid;gap:18px">
+      <section class="card">
+        <div>
+          <h2 id="cName"></h2>
+          <div class="sub" id="cSub"></div>
+        </div>
+        <div class="code"><span>NIOS AI Code</span><b id="cAi"></b></div>
+      </section>
+
+      <nav class="tabs" role="tablist" id="tabs">
+        <button type="button" role="tab" data-k="final" aria-selected="true"><b>Center</b><span>Final mapping · <span id="nFinal">0</span> छात्र</span></button>
+        <button type="button" role="tab" data-k="survey" aria-selected="false"><b>All Student</b><span>पूरा survey · <span id="nSurvey">0</span> छात्र</span></button>
+      </nav>
+
+      <section class="bar">
+        <div class="stats" id="stats"></div>
+        <button type="button" class="dl" id="dl">Excel डाउनलोड करें</button>
+      </section>
+
+      <div class="tbl"><table id="tab"></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Apps Script web app (map/apps_script/Code.gs) — returns only the logged-in centre's students.
+const API_URL = 'https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
+const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","District Name","Block Name","Last School Name","Admission Basis"];
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("en-IN");
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let S = null, cur = "final";
+
+async function login(udise, password){
+  const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({udise,password})});
+  return res.json();
+}
+
+$("loginView").addEventListener("submit", async e => {
+  e.preventDefault();
+  const u=$("uid").value.trim(), p=$("pwd").value.trim();
+  $("go").disabled=true; $("lmsg").className="msg"; $("lmsg").textContent="जाँच हो रही है…";
+  try{
+    const r = await login(u,p);
+    if (!r.ok){ $("lmsg").className="msg err"; $("lmsg").textContent=r.error||"Login नहीं हो सका।"; return; }
+    S = r; try{ sessionStorage.setItem("niosMap", JSON.stringify({u,p})); }catch(_){}
+    show();
+  }catch(err){
+    $("lmsg").className="msg err"; $("lmsg").textContent="Server से जुड़ नहीं पाए। Internet जाँचें और फिर कोशिश करें।";
+  }finally{ $("go").disabled=false; }
+});
+
+$("logout").addEventListener("click", () => {
+  S=null; try{ sessionStorage.removeItem("niosMap"); }catch(_){}
+  $("pwd").value=""; $("lmsg").textContent="";
+  $("appView").hidden=true; $("logout").hidden=true; $("loginView").hidden=false;
+});
+
+$("tabs").addEventListener("click", e => { const b=e.target.closest("button"); if(b){ cur=b.dataset.k; render(); } });
+$("dl").addEventListener("click", download);
+
+function show(){
+  const c=S.centre;
+  $("cName").textContent=c["Centre Name"];
+  $("cSub").textContent=`UDISE ${c.UDISE} · Block ${c.Block} · District ${c.District} · ${c.Gender} · ${c.Seats} seats`;
+  $("cAi").textContent=c["AI Code"]||"—";
+  $("nFinal").textContent=fmt(S.final.rows.length);
+  $("nSurvey").textContent=fmt(S.survey.rows.length);
+  cur = S.final.rows.length || !S.survey.rows.length ? "final" : "survey";
+  $("loginView").hidden=true; $("appView").hidden=false; $("logout").hidden=false;
+  render();
+}
+
+function render(){
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.k===cur));
+  const d=S[cur], h=d.headers, sx=h.indexOf("Sex");
+  const male=d.rows.filter(r=>r[sx]==="MALE").length;
+  $("stats").innerHTML=[["कुल छात्र",d.rows.length],["Male",male],["Female",d.rows.length-male]].map(([l,x])=>`<div><span>${l}</span><b>${fmt(x)}</b></div>`).join("");
+  $("dl").disabled=!d.rows.length;
+  const cols=PREVIEW.map(x=>h.indexOf(x)).filter(i=>i>=0);
+  $("tab").innerHTML=`<thead><tr><th class="n">#</th>${cols.map(i=>`<th>${esc(h[i])}</th>`).join("")}</tr></thead><tbody>`+
+    (d.rows.length?d.rows.map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस सूची में इस centre का कोई छात्र नहीं है</td></tr>`)+`</tbody>`;
+}
+
+function download(){
+  const d=S[cur], c=S.centre;
+  const num=new Set(["Eligible Class to Import","Centre Seats"].map(x=>d.headers.indexOf(x)));
+  const data=[["Students with Recommended NIOS Centre for Admission"], d.headers,
+    ...d.rows.map(r=>r.map((x,i)=>num.has(i)&&x!==""&&!isNaN(x)?+x:x))];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:d.headers.length-1}}];
+  ws["!cols"]=d.headers.map(x=>({wch:Math.min(40,Math.max(10,x.length+2))}));
+  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:1,c:0},e:{r:data.length-1,c:d.headers.length-1}})};
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"MAP Data");
+  const name=`NIOS_${cur==="final"?"Center":"AllStudent"}_${c["Centre Name"]}_${c.UDISE}`.replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim();
+  XLSX.writeFile(wb, name+".xlsx");
+}
+
+// restore session after a page refresh
+try{
+  const s=JSON.parse(sessionStorage.getItem("niosMap")||"null");
+  if (s){ $("uid").value=s.u; $("pwd").value=s.p; $("loginView").requestSubmit(); }
+}catch(_){}
+</script>
+</body>
+</html>
