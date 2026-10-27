@@ -160,6 +160,7 @@ function admin_(password, key) {
   const expected = String(PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '').trim();
   if (!expected) return { ok: false, error: 'Admin login अभी चालू नहीं है (ADMIN_PASSWORD set नहीं)।' };
   if (password !== expected) return { ok: false, error: 'User ID या Password गलत है।' };
+  if (key === 'syncdry') return sync_(true);
   if (!DATA_TABS[key]) return { ok: true, admin: true };
   const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(DATA_TABS[key]);
   const h = headerRow_(sh, UDISE_COL);
