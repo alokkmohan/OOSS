@@ -104,6 +104,8 @@ tfoot td{font-weight:700;background:var(--field);position:sticky;bottom:0}
 .note{font-size:.9rem;color:var(--muted);background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:12px 14px}
 .cp{font-size:.82rem;border:1.5px solid var(--teal);background:transparent;color:var(--teal);border-radius:6px;padding:3px 10px}
 .cp.done{background:var(--teal);color:var(--on-teal)}
+footer{border-top:1px solid var(--rule);padding-top:12px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:.85rem;color:var(--muted)}
+footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -178,12 +180,18 @@ tfoot td{font-weight:700;background:var(--field);position:sticky;bottom:0}
       <div class="msg" id="msg" role="status"></div>
     </aside>
   </div>
+
+  <footer>
+    <span>NIOS Centre Mapping · Samagra Shiksha (Secondary), Uttar Pradesh</span>
+    <span>Version <b id="ver"></b></span>
+  </footer>
 </div>
 
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
 // student rows come back only after login (a centre gets its own, admin gets all).
-const API_URL = 'https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
+const APP_VERSION = '1.2';  // shown in the footer; bump on every release
+const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
 const TAB = {final:"Center", survey:"All Student"};
 const $ = id => document.getElementById(id);
@@ -392,6 +400,7 @@ $("codeTab").addEventListener("click",e=>{
   navigator.clipboard?.writeText(b.dataset.code).then(done,()=>{});
 });
 
+$("ver").textContent = APP_VERSION;
 (async()=>{
   try{ await loadSummary(); }catch(e){ $("meta").textContent="डेटा लोड नहीं हुआ — पेज reload करें"; return; }
   $("meta").innerHTML=`${fmt(S.centres.size)} centres · 213 verified`;
