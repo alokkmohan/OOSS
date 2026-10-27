@@ -157,8 +157,9 @@ function doPost(e) {
 // Properties (ADMIN_PASSWORD), never in this file — the repo is public.
 // Columns are dictionary-encoded ({dict, idx}) to keep the 36k-row reply small.
 function admin_(password, key) {
-  const expected = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
-  if (!expected || password !== expected) return { ok: false, error: 'User ID या Password गलत है।' };
+  const expected = String(PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '').trim();
+  if (!expected) return { ok: false, error: 'Admin login अभी चालू नहीं है (ADMIN_PASSWORD set नहीं)।' };
+  if (password !== expected) return { ok: false, error: 'User ID या Password गलत है।' };
   if (!DATA_TABS[key]) return { ok: true, admin: true };
   const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(DATA_TABS[key]);
   const h = headerRow_(sh, UDISE_COL);
