@@ -5,10 +5,11 @@
  * A centre logs in with its UDISE (User ID and Password are both the UDISE)
  * and gets back only its own students. No student data lives in the GitHub repo.
  *
- * Tabs read:
- *   Centre-wise Count   - centre details (login limited to the 213 in AI_CODES)
- *   MAP Data 213 centre - "Center" tab on the site
- *   All Student Data    - "All Student" tab on the site
+ * Tabs read (kept up to date by Sync.js):
+ *   Centre List                 - centre master (every centre can log in)
+ *   Centre-wise Count           - per-centre counts
+ *   All Student Data            - student list ("MAP Data" format)
+ *   NIOS Format All student     - the same students in the NIOS admission format
  *
  * Deploy: Deploy → New deployment → Web app, Execute as: Me,
  * Who has access: Anyone. Put the /exec URL in map/index.html (API_URL).
@@ -18,8 +19,12 @@ const SHEET_ID = '1_O6YJji1mC3-8n4uhz1IBZnY-4CDXDPM8jBt-tgRcMI'; // "NIOS All Ce
 const CENTRES_TAB = 'Centre-wise Count';
 const DATA_TABS = { final: 'MAP Data 213 centre', survey: 'All Student Data' };
 const UDISE_COL = 'Centre UDISE Code';
+const CENTRE_LIST_TAB = 'Centre List';
+const NIOS_TABS = { final: 'NIOS Format 213 centre', survey: 'NIOS Format All student' };
+const NIOS_CODE_COL = 'Study Centre Code';
+const CENTRE_SEES_AADHAAR = false; // centre downloads leave the Aadhaar column blank unless this is true
 
-// NIOS AI Codes — NIOS notification 20/2026 dated 07-08-2026, Annexure-I
+// NIOS AI Codes — NIOS notification 20/2026 dated 07-08-2026, Annexure-I (used only until the Centre List tab exists)
 const AI_CODES = {
   '09151714173':'G21001', '09151711940':'G21002', '09121108012':'G21003', '09730208001':'G21004', '09732502201':'G21005',
   '09731703504':'G21006', '09732701209':'G21007', '09471205909':'G21008', '09612301305':'G21009', '09611604608':'G21010',
@@ -87,8 +92,25 @@ function doGet(e) {
   }
 }
 
+// Accredited centres: UDISE -> NIOS AI Code, from the Centre List tab.
+function aiCodes_() {
+  return cached_('ai', function () {
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(CENTRE_LIST_TAB);
+    if (!sh) return AI_CODES;
+    const v = sh.getDataRange().getDisplayValues(), h = v[0];
+    const cu = h.indexOf('UDISE Code'), ca = h.findIndex(x => String(x).indexOf('NIOS AI Code') === 0);
+    const out = {};
+    for (let r = 1; r < v.length; r++) {
+      const u = code_(v[r][cu]), a = String(v[r][ca] || '').trim();
+      if (u && a) out[u] = a;
+    }
+    return out;
+  });
+}
+
 function summary_() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
+  const ai = aiCodes_();
   // [udise, name, district, block, gender, type, seats, aiCode]
   const centres = cached_('sum:centres', function () {
     const sh = ss.getSheetByName(CENTRES_TAB);
@@ -98,7 +120,7 @@ function summary_() {
     return values.filter(r => r[col('Centre UDISE')]).map(function (r) {
       const u = code_(r[col('Centre UDISE')]);
       return [u, r[col('Centre Name')], r[col('District')], r[col('Block')], r[col('Gender')],
-              r[col('Type')], Number(r[col('Seats')]) || 0, AI_CODES[u] || ''];
+              r[col('Type')], Number(r[col('Seats')]) || 0, ai[u] || ''];
     });
   });
   const out = { ok: true, centres: centres };
@@ -131,23 +153,18 @@ function doPost(e) {
     const udise = String(body.udise || '').trim();
     const password = String(body.password || '').trim();
     if (!udise || !password) return json_({ ok: false, error: 'User ID और Password दोनों भरें।' });
-    if (udise.toLowerCase() === 'admin') return json_(admin_(password, body.key));
+    if (udise.toLowerCase() === 'admin') return json_(admin_(password, body.key, body));
 
     if (password !== udise) return json_({ ok: false, error: 'User ID या Password गलत है।' });
-    // Only the 213 NIOS-verified centres (Annexure-I) can log in for now.
-    if (!AI_CODES[udise]) {
-      return json_({ ok: false, error: 'यह centre अभी NIOS द्वारा verified 213 centres में नहीं है।' });
-    }
+    const ai = aiCodes_();
     const ss = SpreadsheetApp.openById(SHEET_ID);
+    if (body.action === 'nios') return json_(niosFor_(ss, [udise], 'survey', CENTRE_SEES_AADHAAR));
     const centre = findCentre_(ss, udise);
     if (!centre) return json_({ ok: false, error: 'User ID या Password गलत है।' });
-    centre['AI Code'] = AI_CODES[udise] || '';
+    centre['AI Code'] = ai[udise] || '';
 
-    const out = { ok: true, centre: centre };
-    Object.keys(DATA_TABS).forEach(function (key) {
-      out[key] = studentsFor_(ss, key, udise);
-    });
-    return json_(out);
+    const list = studentsFor_(ss, 'survey', udise);
+    return json_({ ok: true, centre: centre, survey: list, final: list }); // 'final' kept for older page versions
   } catch (err) {
     return json_({ ok: false, error: 'Server error: ' + err.message });
   }
@@ -156,11 +173,13 @@ function doPost(e) {
 // Admin sees every student of one data tab. The password lives in Script
 // Properties (ADMIN_PASSWORD), never in this file — the repo is public.
 // Columns are dictionary-encoded ({dict, idx}) to keep the 36k-row reply small.
-function admin_(password, key) {
+function admin_(password, key, body) {
   const expected = String(PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '').trim();
   if (!expected) return { ok: false, error: 'Admin login अभी चालू नहीं है (ADMIN_PASSWORD set नहीं)।' };
   if (password !== expected) return { ok: false, error: 'User ID या Password गलत है।' };
-  if (key === 'syncdry') return sync_(true);
+  if (key === 'syncdry') return sync_({ dryRun: true });
+  if (key === 'syncnow') return sync_({ tabs: body.tabs });
+  if (key === 'nios') return niosFor_(SpreadsheetApp.openById(SHEET_ID), body.centres || [], body.tab, true);
   if (!DATA_TABS[key]) return { ok: true, admin: true };
   const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(DATA_TABS[key]);
   const h = headerRow_(sh, UDISE_COL);
@@ -205,7 +224,7 @@ function headerRow_(sh, name) {
   return null;
 }
 
-// Details of the 213 verified centres, from the Centre-wise Count tab.
+// Details of every centre, from the Centre-wise Count tab.
 function findCentre_(ss, udise) {
   const all = cached_('centres', function () {
     const sh = ss.getSheetByName(CENTRES_TAB);
@@ -216,7 +235,7 @@ function findCentre_(ss, udise) {
     const out = {};
     values.forEach(function (r) {
       const u = code_(r[col('Centre UDISE')]);
-      if (AI_CODES[u]) out[u] = { UDISE: u, 'Centre Name': r[col('Centre Name')], District: r[col('District')],
+      if (u) out[u] = { UDISE: u, 'Centre Name': r[col('Centre Name')], District: r[col('District')],
                                   Block: r[col('Block')], Gender: r[col('Gender')], Seats: r[col('Seats')] };
     });
     return out;
@@ -225,14 +244,16 @@ function findCentre_(ss, udise) {
 }
 
 // { headerRow, headers, runs: { udise: [[firstRow, count], ...] } } for one data tab.
-function index_(sh, key, force) {
+function index_(sh, key, force) { return codeIndex_(sh, key, UDISE_COL, force); }
+
+function codeIndex_(sh, key, colName, force) {
   return cached_('idx:' + key, function () {
-    const h = headerRow_(sh, UDISE_COL);
+    const h = headerRow_(sh, colName);
     if (!h) return { headerRow: 0, headers: [], runs: {} };
     const headers = h.headers.filter(String);
     const n = sh.getLastRow() - h.row, runs = {};
     if (n > 0) {
-      const codes = sh.getRange(h.row + 1, headers.indexOf(UDISE_COL) + 1, n, 1).getValues();
+      const codes = sh.getRange(h.row + 1, headers.indexOf(colName) + 1, n, 1).getValues();
       let prev = null;
       codes.forEach(function (c, i) {
         const u = code_(c[0]);
@@ -259,4 +280,31 @@ function studentsFor_(ss, key, udise, force) {
   });
   if (stale && !force) return studentsFor_(ss, key, udise, true);
   return { headers: idx.headers, rows: rows };
+}
+
+// NIOS admission-format rows (63 columns) for the given centres; all rows when none are given.
+function niosFor_(ss, codes, tab, withAadhaar) {
+  const key = NIOS_TABS[tab] ? tab : 'survey';
+  const sh = ss.getSheetByName(NIOS_TABS[key]);
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0].filter(String);
+  const col = headers.indexOf(NIOS_CODE_COL), aad = headers.findIndex(h => /aadh?a?a?r/i.test(h));
+  const n = sh.getLastRow() - 1, want = new Set(codes.map(code_));
+  let rows = [];
+  if (n > 0 && (!want.size || want.size > 40)) {      // many centres: read the tab once
+    rows = sh.getRange(2, 1, n, headers.length).getDisplayValues().filter(r => !want.size || want.has(code_(r[col])));
+  } else if (n > 0) {                                  // a few centres: read only their rows
+    let idx = codeIndex_(sh, 'nios:' + key, NIOS_CODE_COL);
+    if (idx.lastRow !== sh.getLastRow()) idx = codeIndex_(sh, 'nios:' + key, NIOS_CODE_COL, true);
+    want.forEach(u => (idx.runs[u] || []).forEach(run => sh.getRange(run[0], 1, run[1], headers.length).getDisplayValues()
+      .forEach(r => { if (code_(r[col]) === u) rows.push(r); })));
+  }
+  if (!withAadhaar && aad >= 0) rows.forEach(r => { r[aad] = ''; });
+  if (rows.length <= 3000) return { ok: true, headers: headers, rows: rows };
+  // large replies are dictionary-encoded per column, like the admin student dump
+  const cols = headers.map((_, c) => {
+    const lookup = {}, dict = [], idx = new Array(rows.length);
+    rows.forEach((r, i) => { const v = r[c]; let k = lookup[v]; if (k === undefined) { k = lookup[v] = dict.length; dict.push(v); } idx[i] = k; });
+    return { dict: dict, idx: idx };
+  });
+  return { ok: true, headers: headers, n: rows.length, cols: cols };
 }

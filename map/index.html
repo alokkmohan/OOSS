@@ -141,12 +141,10 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
     <label class="fld"><span>Password</span><input id="pwd" name="password" type="password" autocomplete="current-password" required></label>
     <button type="submit" class="go" id="go">Login</button>
     <div class="msg" id="lmsg" role="status"></div>
-    <p class="star">* अभी केवल NIOS द्वारा verified (मान्यता प्राप्त) 213 centres ही login कर सकते हैं।</p>
   </form>
 
   <nav class="tabs" role="tablist" id="tabs">
-    <button type="button" role="tab" data-t="final" aria-selected="true"><b>Center</b><span><span id="l-final">Verified 213 centres</span> · <span id="n-final">…</span> छात्र</span></button>
-    <button type="button" role="tab" data-t="survey" aria-selected="false"><b>All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
+    <button type="button" role="tab" data-t="survey" aria-selected="true"><b>All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
     <button type="button" role="tab" id="tab-code" data-t="code" aria-selected="false"><b>Centre Code</b><span>Login ID · NIOS AI Code</span></button>
   </nav>
 
@@ -176,7 +174,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
       <span class="msg" id="codeN"></span>
     </div>
     <div class="tbl"><table id="codeTab"></table></div>
-    <div class="note">Login ID = centre का UDISE code। AI Code स्रोत: NIOS अधिसूचना 20/2026 दिनांक 07 अगस्त 2026, अनुबंध-I (213 अध्ययन केंद्र)। NIOS के साथ हर पत्राचार में AI Code लिखना ज़रूरी है।</div>
+    <div class="note">Login ID = centre का UDISE code। AI Code (जहाँ मिल चुका है) स्रोत: NIOS अधिसूचना 20/2026 दिनांक 07 अगस्त 2026, अनुबंध-I। NIOS के साथ हर पत्राचार में AI Code लिखना ज़रूरी है।</div>
   </section>
 
   <div class="main" id="mainView">
@@ -215,16 +213,16 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
 // student rows come back only after login (a centre gets its own, admin gets all).
-const APP_VERSION = '1.4';  // shown in the footer; bump on every release
+const APP_VERSION = '1.5';  // shown in the footer; bump on every release
 const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
-const TAB = {final:"Center", survey:"All Student"};
+const TAB = {survey:"All Student"};
 const $ = id => document.getElementById(id);
 const fmt = n => Number(n).toLocaleString("en-IN");
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-let S = null;            // summary: {centres:Map, final:{udise:[n,m]}, survey:{...}}
-let view = "code";       // final | survey | code (Centre Code tab is admin-only)
+let S = null;            // summary: {centres:Map, survey:{udise:[students, male]}}
+let view = "code";       // survey | code (Centre Code tab is admin-only)
 let blocksSel = new Set(), centresSel = new Set();
 let session = null;      // {type:"centre"|"admin", u, p, centre?}
 const rowsData = {};     // key -> {headers, rows}
@@ -238,31 +236,24 @@ async function loadSummary(){
   const r = await (await fetch(API_URL+"?action=summary")).json();
   if (!r.ok) throw new Error(r.error);
   const centres = new Map(r.centres.map(c=>[c[0],{udise:c[0],name:c[1],district:c[2],block:c[3],gender:c[4],type:c[5],seats:c[6],ai:c[7]}]));
-  S = {centres, final:r.final, survey:r.survey};
-  const tot = k => Object.values(S[k]).reduce((a,x)=>a+x[0],0);
-  S.tot = {final:tot("final"), survey:tot("survey")};
+  S = {centres, survey:r.survey};
+  S.tot = {survey:Object.values(S.survey).reduce((a,x)=>a+x[0],0)};
   tabLabels();
 }
 
 // Tab subtitles: a centre sees its own counts, admin sees the totals.
 function tabLabels(){
   const own = session && session.type==="centre";
-  $("l-final").textContent = own ? "आपके centre के" : "Verified 213 centres";
-  $("l-survey").textContent = own ? "पूरे survey में आपके" : "पूरा survey";
-  $("n-final").textContent = fmt(own ? rowsData.final.rows.length : S.tot.final);
+  $("l-survey").textContent = own ? "आपके centre के" : "पूरा survey";
   $("n-survey").textContent = fmt(own ? rowsData.survey.rows.length : S.tot.survey);
 }
 
-// centres that belong to the current tab
-function tabCentres(){
-  const all=[...S.centres.values()];
-  if (view==="survey") return all.filter(c=>S.survey[c.udise]);
-  return all.filter(c=>c.ai);
-}
-const count = (key,u) => S[key==="code"?"final":key][u] || [0,0];
+// every centre in the Centre List (all of them can log in)
+function tabCentres(){ return [...S.centres.values()]; }
+const count = (key,u) => S.survey[u] || [0,0];
 const inScope = c => (!$("fDistrict").value || c.district===$("fDistrict").value) && (!blocksSel.size || blocksSel.has(c.block));
 const picked = c => inScope(c) && (!centresSel.size || centresSel.has(c.udise));
-const dataKey = () => view==="survey" ? "survey" : "final";
+const dataKey = () => "survey";
 
 function fillDistricts(){
   const keep=$("fDistrict").value, m=new Map();
@@ -335,16 +326,16 @@ function renderStudents(){
     (v.rows.length?v.rows.slice(0,LIMIT).map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस चयन में कोई छात्र नहीं है</td></tr>`)+`</tbody></table></div>`;
   $("pnote").textContent = v.rows.length>LIMIT ? `पहले ${LIMIT} छात्र दिख रहे हैं — पूरी सूची (${fmt(v.rows.length)}) Excel में मिलेगी` : `${fmt(v.rows.length)} छात्र`;
   dl.disabled=!v.rows.length;
-  $("dlNote").textContent = session.type==="admin" ? `${fmt(v.rows.length)} छात्र · सभी कॉलम` : "आपके centre की पूरी सूची";
+  $("dlNote").textContent = `${fmt(v.rows.length)} छात्र · Centre-wise Count + MAP Data + NIOS Format`;
 }
 
 function renderCodes(){
   const q=$("codeQ").value.trim().toUpperCase();
-  const list=[...S.centres.values()].filter(c=>c.ai&&inScope(c)&&(!centresSel.size||centresSel.has(c.udise))&&(!q||c.name.toUpperCase().includes(q)||c.udise.includes(q)||c.ai.includes(q)))
+  const list=[...S.centres.values()].filter(c=>inScope(c)&&(!centresSel.size||centresSel.has(c.udise))&&(!q||c.name.toUpperCase().includes(q)||c.udise.includes(q)||(c.ai||"").includes(q)))
     .sort((a,b)=>(a.district+a.block+a.name).localeCompare(b.district+b.block+b.name));
   $("codeN").textContent=`${list.length} centres`;
   $("codeTab").innerHTML=`<thead><tr><th>District</th><th>Block</th><th>Centre Name</th><th>Login ID (UDISE)</th><th>NIOS AI Code</th><th></th></tr></thead><tbody>`+
-    (list.length?list.map(c=>`<tr><td>${esc(c.district)}</td><td>${esc(c.block)}</td><td>${esc(c.name)}</td><td class="code">${esc(c.udise)}</td><td class="ai">${esc(c.ai)}</td><td><button type="button" class="cp" data-code="${esc(c.udise)}">Copy ID</button></td></tr>`).join(""):`<tr><td colspan="6" class="empty">कोई centre नहीं मिला</td></tr>`)+`</tbody>`;
+    (list.length?list.map(c=>`<tr><td>${esc(c.district)}</td><td>${esc(c.block)}</td><td>${esc(c.name)}</td><td class="code">${esc(c.udise)}</td><td class="ai">${esc(c.ai||"—")}</td><td><button type="button" class="cp" data-code="${esc(c.udise)}">Copy ID</button></td></tr>`).join(""):`<tr><td colspan="6" class="empty">कोई centre नहीं मिला</td></tr>`)+`</tbody>`;
 }
 
 // ---- login ----
@@ -370,13 +361,13 @@ $("loginView").addEventListener("submit", async e=>{
       const r=await api({udise:u,password:p});
       if (!r.ok) throw new Error(r.error);
       session={type:"centre",u,p,centre:r.centre};
-      rowsData.final=r.final; rowsData.survey=r.survey;
+      rowsData.survey=r.survey;
       const c=S.centres.get(u);
       if (c){ $("fDistrict").value=c.district; blocksSel=new Set([c.block]); centresSel=new Set([u]); }
     }
     try{ sessionStorage.setItem("niosMap",JSON.stringify({u,p})); }catch(_){}
     if (session.type==="admin"){ $("fDistrict").value=""; blocksSel.clear(); centresSel.clear(); }
-    view="final"; $("lmsg").textContent=""; showSession(); refill();
+    view="survey"; $("lmsg").textContent=""; showSession(); refill();
     if (session.type==="admin" && view!=="code"){ await loadAdmin(dataKey()); render(); }
   }catch(err){
     $("lmsg").className="msg err"; $("lmsg").textContent=err.message&&!/fetch/i.test(err.message)?err.message:"Server से जुड़ नहीं पाए, फिर कोशिश करें।";
@@ -406,23 +397,55 @@ $("logout").addEventListener("click",()=>{
   $("codeQ").value=""; $("msg").textContent=""; showSession(); refill();
 });
 
-// ---- download ----
-$("dlX").addEventListener("click",()=>{
+// ---- download: same three sheets as the Google Sheet (Centre-wise Count, MAP Data, NIOS Format) ----
+function sheetOf(rows, filterRow, widths){
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=widths.map(w=>({wch:w}));
+  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:filterRow,c:0},e:{r:rows.length-1,c:widths.length-1}})};
+  return ws;
+}
+
+async function download(){
   const v=visibleRows(); if (!v||!v.rows.length) return;
-  const num=new Set(["Eligible Class to Import","Centre Seats"].map(x=>v.headers.indexOf(x)));
-  const data=[["Students with Recommended NIOS Centre for Admission"],v.headers,...v.rows.map(r=>r.map((x,i)=>num.has(i)&&x!==""&&!isNaN(x)?+x:x))];
-  const ws=XLSX.utils.aoa_to_sheet(data);
-  ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:v.headers.length-1}}];
-  ws["!cols"]=v.headers.map(h=>({wch:Math.min(40,Math.max(10,h.length+2))}));
-  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:1,c:0},e:{r:data.length-1,c:v.headers.length-1}})};
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"MAP Data");
-  const parts=[TAB[dataKey()].replace(" ","")];
-  if ($("fDistrict").value) parts.push($("fDistrict").value);
-  if (blocksSel.size) parts.push(blocksSel.size<=3?[...blocksSel].join("-"):`${blocksSel.size} Blocks`);
-  if (centresSel.size) parts.push(centresSel.size===1?(()=>{const c=S.centres.get([...centresSel][0]);return c.name+" "+c.udise})():`${centresSel.size} Centres`);
-  XLSX.writeFile(wb,("NIOS_"+parts.join("_")).replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim().slice(0,150)+".xlsx");
-  $("msg").className="msg ok"; $("msg").textContent=`Excel बन गई: ${fmt(v.rows.length)} छात्र।`;
-});
+  const btn=$("dlX"), msg=$("msg");
+  btn.disabled=true; msg.className="msg"; msg.textContent="NIOS Format तैयार हो रहा है…";
+  try{
+    const ui=v.headers.indexOf("Centre UDISE Code"), sx=v.headers.indexOf("Sex");
+    const whole = session.type==="admin" && !$("fDistrict").value && !centresSel.size;
+    const r = session.type==="admin"
+      ? await api({udise:"admin", password:session.p, key:"nios", tab:"survey", centres: whole ? [] : [...new Set(v.rows.map(x=>x[ui]))]})
+      : await api({udise:session.u, password:session.p, action:"nios"});
+    if (!r.ok) throw new Error(r.error || "NIOS Format नहीं मिला");
+    const nios = r.cols ? Array.from({length:r.n}, (_,i)=>r.cols.map(c=>c.dict[c.idx[i]])) : r.rows;
+
+    // Centre-wise Count for the centres in this selection
+    const n={}, m={};
+    v.rows.forEach(x=>{ n[x[ui]]=(n[x[ui]]||0)+1; if (x[sx]==="MALE") m[x[ui]]=(m[x[ui]]||0)+1; });
+    const cs=tabCentres().filter(picked).sort((a,b)=>(a.district+a.block+a.name).localeCompare(b.district+b.block+b.name));
+    const cw=[["NIOS Centre Mapping - Centre-wise Count"],["#","District","Block","Centre UDISE","Centre Name","Gender","Type","Seats","Students Mapped","Male","Female","Seats Left"]];
+    cs.forEach((c,i)=>{ const k=n[c.udise]||0, mm=m[c.udise]||0; cw.push([i+1,c.district,c.block,c.udise,c.name,c.gender,c.type,c.seats,k,mm,k-mm,c.seats-k]); });
+    const tot=j=>cw.slice(2).reduce((a,x)=>a+x[j],0);
+    cw.push(["","","","","TOTAL","","",tot(7),tot(8),tot(9),tot(10),tot(11)]);
+
+    const num=new Set(["Eligible Class to Import","Centre Seats"].map(x=>v.headers.indexOf(x)));
+    const md=[["Students with Recommended NIOS Centre for Admission"],v.headers,...v.rows.map(x=>x.map((y,i)=>num.has(i)&&y!==""&&!isNaN(y)?+y:y))];
+    const nf=[r.headers,...nios.map(x=>x.map((y,i)=>(i===3||i===4)&&y!==""&&!isNaN(y)?+y:y))];
+
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,sheetOf(cw,1,[6,18,18,14,44,8,6,8,10,8,8,10]),"Centre-wise Count");
+    XLSX.utils.book_append_sheet(wb,sheetOf(md,1,v.headers.map(h=>Math.min(40,Math.max(10,h.length+2)))),"MAP Data");
+    XLSX.utils.book_append_sheet(wb,sheetOf(nf,0,r.headers.map(h=>Math.min(30,Math.max(10,String(h).length/2)))),"NIOS Format");
+    const parts=["AllStudent"];
+    if ($("fDistrict").value) parts.push($("fDistrict").value);
+    if (blocksSel.size) parts.push(blocksSel.size<=3?[...blocksSel].join("-"):`${blocksSel.size} Blocks`);
+    if (centresSel.size) parts.push(centresSel.size===1?(()=>{const c=S.centres.get([...centresSel][0]);return c.name+" "+c.udise})():`${centresSel.size} Centres`);
+    XLSX.writeFile(wb,("NIOS_"+parts.join("_")).replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim().slice(0,150)+".xlsx");
+    msg.className="msg ok"; msg.textContent=`Excel बन गई: ${fmt(v.rows.length)} छात्र (Centre-wise Count + MAP Data + NIOS Format)।`;
+  }catch(err){
+    msg.className="msg err"; msg.textContent="डाउनलोड नहीं हो सका: "+(err.message||err);
+  }finally{ btn.disabled=false; }
+}
+$("dlX").addEventListener("click",download);
 
 // ---- events ----
 $("tabs").addEventListener("click",async e=>{
@@ -447,7 +470,7 @@ $("codeTab").addEventListener("click",e=>{
 $("ver").textContent = APP_VERSION;
 (async()=>{
   try{ await loadSummary(); }catch(e){ $("meta").textContent="डेटा लोड नहीं हुआ — पेज reload करें"; return; }
-  $("meta").innerHTML=`${fmt(S.centres.size)} centres · 213 verified`;
+  $("meta").innerHTML=`${fmt(S.centres.size)} centres`;
   refill();
   try{
     const s=JSON.parse(sessionStorage.getItem("niosMap")||"null");

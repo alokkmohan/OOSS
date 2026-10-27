@@ -1,17 +1,27 @@
 /**
- * Sync verified students from the field-collection sheet into this Sheet.
+ * Hourly sync: students verified in the field → every tab of this Sheet.
  *
  * Source (READ-ONLY — never written to): "Field Data Collection" tab of the
- * collect sheet. A student belongs in the lists only if they are really not
- * studying: Current Status = "Not Studying", not a death, and no remark saying
- * they study elsewhere, have passed class 12, or are a duplicate/wrong entry.
+ * collect sheet. Centre master: "Centre List" tab (all centres; the NIOS AI
+ * Code column is for information).
  *
- * Each run:
- *   - students no longer valid are moved from "All Student Data" and
- *     "MAP Data 213 centre" to "Excluded Students" (with the reason);
- *   - new valid students are appended with a NIOS centre assigned
- *     (own school → same block → same district; gender and seats checked);
- *   - a line is added to "Sync Log".
+ * Rules (same as nios_centre_mapping.py):
+ *  - students: Current Status "Not Studying"; Reason "Death" dropped; first
+ *    row per PEN; remarks saying studying elsewhere / class 12 passed /
+ *    duplicate or wrong entry dropped
+ *  - districts and blocks come from UDISE codes (first 4 / 6 digits), never names
+ *  - a centre fits when gender (a boy never goes to a girls-only centre),
+ *    course (9-10 Secondary, 11-12 Sr. Secondary) and seats (hard cap) all
+ *    fit; own school → same block → same district → "course not offered";
+ *    lowest allotted/seats, then Type A > B > C, then PM Shri; a second pass
+ *    places whoever is left as a labelled exception
+ *  - INCREMENTAL: students already in All Student Data keep their centre
+ *
+ * Tabs kept up to date: All Student Data, NIOS Format All student,
+ * Centre-wise Count (+ Excluded Students, Sync Log). Each tab is rewritten
+ * only from its first changed row. The accredited-only tabs (MAP Data 213
+ * centre, NIOS Format 213 centre) are paused: add 'map213' / 'nios213' to
+ * SYNC_TABS to write them again.
  * Run setupSync() once from the editor to install the hourly trigger.
  */
 
@@ -19,8 +29,22 @@ const FIELD_SHEET_ID = '1WWifakyqkBoA922wu16bCYBZTjK2NyrxkVC_6eLBIV0'; // collec
 const FIELD_TAB = 'Field Data Collection';
 const EXCLUDED_TAB = 'Excluded Students';
 const LOG_TAB = 'Sync Log';
-// written as plain text so IDs keep their leading zeros
-const TEXT_COLS = ['Student PEN', 'Last UDISE Code', 'Mobile No', 'Academic Year', 'Centre UDISE Code', 'Centre Pin', 'Centre Mobile No.'];
+const TAB_ALL = 'All Student Data', TAB_MAP213 = 'MAP Data 213 centre';
+const TAB_NIOS_ALL = 'NIOS Format All student', TAB_NIOS213 = 'NIOS Format 213 centre', TAB_COUNT = 'Centre-wise Count';
+const SYNC_TABS = ['all', 'niosAll', 'count']; // all centres; 'map213' / 'nios213' paused
+const MAP_TEXT = ['Student PEN', 'Last UDISE Code', 'Mobile No', 'Academic Year', 'Centre UDISE Code', 'Centre Pin', 'Centre Mobile No.'];
+const NIOS_TEXT = [7, 11, 12, 39, 46, 48]; // mobile, DOB, Aadhaar, pincodes, study centre code
+const CENTRE_COLS = {
+  'Centre Name': 'name', 'Centre Address': 'address', 'Centre Block': 'block', 'Centre District': 'district',
+  'Centre Pin': 'pin', 'Centre Mobile No.': 'mobile', 'Centre Email': 'email', 'Centre Principal / Coordinator': 'principal',
+  'Centre Course': 'course', 'Centre With Science': 'science', 'Centre Medium': 'medium', 'Centre Gender': 'gender',
+  'Centre Type': 'type', 'Centre Seats': 'seats', 'Centre PM Shri': 'pmshri',
+};
+const B_OWN = 'Own school is a NIOS centre', B_BLOCK = 'Centre in same block', B_DIST = 'Centre in same district (other block)';
+const B_COURSE = 'Gender OK, but course not offered - verify';
+const B_COURSE_OLD = 'Gender OK, but course (Sec/Sr.Sec) not offered - verify'; // same meaning, older wording
+const X_GENDER = 'Exception: gender not matching - verify', X_SEATS = 'Exception: seats exceeded - verify';
+const X_BOTH = 'Exception: gender + seats - verify', NO_CENTRE = 'No centre in district';
 
 // ---- remark rules (Hindi / English / Hinglish) ----
 const DEV = 'ऀ-ॿ';
@@ -51,15 +75,13 @@ const STUDYING_RX = [
 // says they left for studies elsewhere, even if the remark also has a "not"
 const STUDYING_ALWAYS_RX = /(टी\.?\s*सी|\btc\b|t\.c).{0,40}(आगे\s*की|अग्रिम)\s*पढ़ाई|(आगे\s*की|अग्रिम)\s*पढ़ाई\s*(हेतु|के\s*लिए).{0,30}(चला|चली|टी\.?\s*सी|\btc\b|स्थानांतरण)|transfer[a-z]*\s*(with\s*tc\s*)?to\s*(current|another|other|new)\s*school|already\s*(an\s*)?(another|other)\s*school/i;
 
-/** Why a field row is excluded, or '' if the student is really not studying. */
-function exclusionReason_(status, reason, remark) {
+function remarkExclusion_(remark) {
   const t = String(remark || '').trim();
-  if (status !== 'Not Studying') return 'Studying (field status)';
-  if ((reason === 'Death' && !PARENT_RX.test(t)) || (DEATH_RX.test(t) && !PARENT_RX.test(t))) return 'Death';
+  if (!t) return '';
+  if (DEATH_RX.test(t) && !PARENT_RX.test(t)) return 'Death';
   if (DUP_RX.test(t)) return 'Duplicate / wrong entry';
   if (DONE12_RX.test(t)) return 'Class 12 passed / higher studies';
-  if (STUDYING_ALWAYS_RX.test(t)) return 'Studying elsewhere (remark)';
-  if (!NEG_RX.test(t) && STUDYING_RX.some(rx => rx.test(t))) return 'Studying elsewhere (remark)';
+  if (STUDYING_ALWAYS_RX.test(t) || (!NEG_RX.test(t) && STUDYING_RX.some(rx => rx.test(t)))) return 'Studying elsewhere (remark)';
   return '';
 }
 
@@ -68,204 +90,308 @@ function setupSync() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'syncFromField')
     .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('syncFromField').timeBased().everyHours(1).create();
-  Logger.log(JSON.stringify(sync_(false)));
+  Logger.log(JSON.stringify(sync_({})));
 }
 
-function syncFromField() { sync_(false); }
+function syncFromField() { sync_({}); }
 
-function sync_(dryRun) {
+/** opts: { dryRun, tabs: ['all','niosAll','count','map213','nios213'] (default SYNC_TABS) } */
+function sync_(opts) {
+  const o = typeof opts === 'object' && opts ? opts : { dryRun: !!opts };
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return { ok: false, error: 'another sync is running' };
-  try { return runSync_(dryRun); } finally { lock.releaseLock(); }
+  try { return runSync_(o); } finally { lock.releaseLock(); }
 }
 
-function runSync_(dryRun) {
-  const t0 = Date.now();
+function runSync_(o) {
+  const t0 = Date.now(), dry = !!o.dryRun;
+  const want = k => (o.tabs || SYNC_TABS).indexOf(k) >= 0;
   const ss = SpreadsheetApp.openById(SHEET_ID);
+  const centres = centreList_(ss);
 
-  // 1. field rows, one per PEN (read-only); the collect app upserts by PEN, so a later row wins
+  // 1. field students (read-only): Not Studying, no Death, first row per PEN, remark rules
   const fv = SpreadsheetApp.openById(FIELD_SHEET_ID).getSheetByName(FIELD_TAB).getDataRange().getDisplayValues();
   const fh = fv[0], fc = n => fh.indexOf(n);
-  const field = new Map();
+  const known = new Set(), seen = new Set(), valid = new Map(), why = new Map(), firstRow = new Map();
   for (let r = 1; r < fv.length; r++) {
-    const pen = String(fv[r][fc('Student PEN')]).trim();
-    if (pen) field.set(pen, fv[r]);
+    const row = fv[r], pen = String(row[fc('Student PEN')]).trim();
+    if (!pen) continue;
+    known.add(pen);
+    if (!firstRow.has(pen)) firstRow.set(pen, row);
+    if (String(row[fc('Current Status')]).trim() !== 'Not Studying') { if (!why.has(pen)) why.set(pen, 'Studying (field status)'); continue; }
+    if (String(row[fc('Reason')]).trim() === 'Death') { why.set(pen, 'Death'); continue; }
+    if (seen.has(pen)) continue;
+    seen.add(pen);
+    const ex = remarkExclusion_(row[fc('Remarks')]);
+    if (ex) why.set(pen, ex); else valid.set(pen, row);
   }
-  const verdict = new Map(); // pen -> exclusion reason ('' = valid)
-  field.forEach((row, pen) => verdict.set(pen, exclusionReason_(row[fc('Current Status')], row[fc('Reason')], row[fc('Remarks')])));
-  const samples = {}; // dry run only: which remarks each rule caught (text and counts, no names)
-  if (dryRun) field.forEach((row, pen) => {
-    const why = verdict.get(pen);
-    if (!why || why === 'Studying (field status)') return;
-    const k = String(row[fc('Remarks')] || '').trim().slice(0, 120) || '(remark blank; Reason: ' + row[fc('Reason')] + ')';
-    const o = samples[why] || (samples[why] = {});
-    o[k] = (o[k] || 0) + 1;
-  });
 
-  // 2. current lists
-  const allT = readTab_(ss.getSheetByName(DATA_TABS.survey));
-  const finT = readTab_(ss.getSheetByName(DATA_TABS.final));
+  // 2. previous allotments: All Student Data rows stay unless the field now says otherwise
+  const allT = readTab_(ss.getSheetByName(TAB_ALL), UDISE_COL);
   const H = allT.headers, hc = n => H.indexOf(n);
-
-  // 3. rows to drop (field says no longer valid); students missing from the field tab are left alone
-  const dropReason = pen => (verdict.has(pen) ? verdict.get(pen) : '');
-  const excluded = [];
-  const keepAll = allT.rows.filter(r => {
-    const why = dropReason(String(r[hc('Student PEN')]).trim());
-    if (why) excluded.push([why, r]);
-    return !why;
+  const mapper = mapper_(centres);
+  const kept = [], excluded = [], have = new Set();
+  let relabelled = 0;
+  allT.rows.forEach(r => {
+    const pen = String(r[hc('Student PEN')]).trim();
+    have.add(pen);
+    if (known.has(pen) && !valid.has(pen)) { excluded.push([why.get(pen) || 'Not in field list', r]); return; }
+    const row = r.slice();
+    row[hc('Student PEN')] = pen;
+    row[hc('Last UDISE Code')] = padUdise_(row[hc('Last UDISE Code')]);
+    const u = padUdise_(row[hc('Centre UDISE Code')]);
+    row[hc(UDISE_COL)] = u;
+    if (row[hc('Admission Basis')] === B_COURSE_OLD) { row[hc('Admission Basis')] = B_COURSE; relabelled++; }
+    const c = centres.get(u);
+    if (c) Object.keys(CENTRE_COLS).forEach(h => { row[hc(h)] = c[CENTRE_COLS[h]]; });
+    mapper.take(u);
+    kept.push(row);
   });
-  const keepFin = finT.rows.filter(r => !dropReason(String(r[finT.headers.indexOf('Student PEN')]).trim()));
 
-  // 4. new valid students, with a centre
-  const have = new Set(allT.rows.map(r => String(r[hc('Student PEN')]).trim()));
-  const centres = centreTable_(ss, keepAll, H);
-  const added = [];
-  field.forEach((row, pen) => {
-    if (have.has(pen) || verdict.get(pen)) return;
-    added.push(newStudentRow_(row, fc, H, centres));
+  // 3. new students: first pass in field order, exceptions only after everyone else has a seat
+  const fresh = [];
+  valid.forEach((row, pen) => { if (!have.has(pen)) fresh.push(student_(row, fc, pen)); });
+  const later = [];
+  fresh.forEach(st => {
+    const [u, basis] = mapper.firstPass(st);
+    if (u) { mapper.take(u); st.u = u; st.basis = basis; } else later.push(st);
   });
-  const addedFin = added.filter(r => AI_CODES[code_(r[hc('Centre UDISE Code')])]);
+  later.forEach(st => { const [u, basis] = mapper.secondPass(st); mapper.take(u); st.u = u; st.basis = basis; });
+  const added = fresh.map(st => H.map(h => newCell_(h, st, centres)));
 
-  const byReason = {}, basis = {};
-  excluded.forEach(([why]) => { byReason[why] = (byReason[why] || 0) + 1; });
-  added.forEach(r => { const b = r[hc('Admission Basis')]; basis[b] = (basis[b] || 0) + 1; });
-  const stats = {
-    ok: true, dryRun: dryRun, fieldStudents: field.size,
-    allBefore: allT.rows.length, allAfter: keepAll.length + added.length,
-    finalBefore: finT.rows.length, finalAfter: keepFin.length + addedFin.length,
-    removedAll: excluded.length, removedFinal: finT.rows.length - keepFin.length,
-    removedByReason: byReason, added: added.length, addedFinal: addedFin.length, addedBasis: basis,
-  };
-  if (dryRun) {
-    stats.samples = samples;
-  }
+  // 4. every tab from the same final list
+  const all = kept.concat(added);
+  const isAcc = r => !!(centres.get(r[hc(UDISE_COL)]) || {}).ai;
+  const map213 = all.filter(isAcc);
+  const niosHead = headerOf_(ss.getSheetByName(TAB_NIOS_ALL));
+  const nios = all.map(r => niosRow_(r, hc, niosHead.length, firstRow.get(String(r[hc('Student PEN')])), fc));
+  const nios213 = nios.filter((_, i) => isAcc(all[i]));
+  const count = centreCount_(centres, all, hc);
 
-  if (!dryRun) {
-    if (excluded.length) appendExcluded_(ss, H, excluded);
-    writeTab_(allT, keepAll.concat(added));
-    writeTab_(finT, keepFin.concat(addedFin.map(r => finT.headers.map(h => r[hc(h)]))));
-    const cache = CacheService.getScriptCache();
-    cache.removeAll(['idx:final', 'idx:survey', 'sum:final', 'sum:survey', 'sum:centres', 'centres']);
-    if (excluded.length || added.length) log_(ss, stats);
+  const basis = {}, removed = {};
+  fresh.forEach(st => { basis[st.basis] = (basis[st.basis] || 0) + 1; });
+  excluded.forEach(([w]) => { removed[w] = (removed[w] || 0) + 1; });
+  const stats = { ok: true, dryRun: dry, fieldRows: fv.length - 1, validStudents: valid.size,
+    allBefore: allT.rows.length, allAfter: all.length, map213After: map213.length, kept: kept.length,
+    removed: excluded.length, removedByReason: removed, added: added.length, addedBasis: basis,
+    relabelled: relabelled, writes: {} };
+
+  const plan = [
+    ['all', TAB_ALL, all, H.length, MAP_TEXT.map(hc)],
+    ['map213', TAB_MAP213, map213, H.length, MAP_TEXT.map(hc)],
+    ['niosAll', TAB_NIOS_ALL, nios, niosHead.length, NIOS_TEXT],
+    ['nios213', TAB_NIOS213, nios213, niosHead.length, NIOS_TEXT],
+    ['count', TAB_COUNT, count, 12, [3]],
+  ];
+  plan.forEach(([key, name, rows, width, text]) => {
+    if (!want(key)) return;
+    stats.writes[key] = writeDiff_(ss.getSheetByName(name), rows, width, text, dry);
+  });
+  if (!dry) {
+    if (want('all') && excluded.length) appendExcluded_(ss, H, excluded);
+    CacheService.getScriptCache().removeAll(['idx:final', 'idx:survey', 'idx:nios:final', 'idx:nios:survey',
+      'sum:final', 'sum:survey', 'sum:centres', 'centres', 'ai']);
+    if (excluded.length || added.length || relabelled) log_(ss, stats);
   }
   stats.seconds = Math.round((Date.now() - t0) / 1000);
   return stats;
 }
 
-// ---- helpers ----
-function readTab_(sh) {
-  const h = headerRow_(sh, UDISE_COL);
+// ---- centres and placement ----
+const padUdise_ = v => { const t = String(v === null || v === undefined ? '' : v).trim().replace(/\.0$/, ''); return /^\d{1,11}$/.test(t) ? t.padStart(11, '0') : t; };
+const intOf_ = v => { const t = String(v === null || v === undefined ? '' : v).trim().replace(/\.0$/, ''); return /^\d+$/.test(t) ? Number(t) : null; };
+const titleCase_ = t => String(t || '').trim().split(/\s+/).filter(String).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+function centreList_(ss) {
+  const v = ss.getSheetByName(CENTRE_LIST_TAB).getDataRange().getDisplayValues();
+  const h = v[0], c = n => h.indexOf(n);
+  const ai = h.findIndex(x => String(x).indexOf('NIOS AI Code') === 0);
+  const out = new Map();
+  for (let r = 1; r < v.length; r++) {
+    const row = v[r], u = padUdise_(row[c('UDISE Code')]);
+    if (!u) continue;
+    const type = String(row[c('Type')]).trim().toUpperCase();
+    const g = String(row[c('Gender')]).trim();
+    const dc = String(row[c('District Code')]).trim();
+    out.set(u, {
+      udise: u, dcode: dc ? dc.padStart(4, '0') : u.slice(0, 4), bcode: u.slice(0, 6),
+      name: row[c('Centre Name')], address: row[c('Address')], block: row[c('Block')], district: row[c('District')],
+      pin: row[c('Pin')], mobile: row[c('Mobile No.')], email: row[c('Email')], principal: row[c('Principal / Coordinator')],
+      course: row[c('Course')] || 'Not specified', science: row[c('With Science')], medium: row[c('Medium')] || 'Hindi',
+      gender: g === 'Girls' || g === 'Boys' ? g : 'Both', type: type,
+      seats: Number(row[c('Seats')]) || { A: 500, B: 300, C: 150 }[type] || 0,
+      pmshri: /^y/i.test(String(row[c('PM Shri')])) ? 'Yes' : '', ai: ai >= 0 ? String(row[ai]).trim() : '',
+      typeRank: { A: 0, B: 1, C: 2 }[type] !== undefined ? { A: 0, B: 1, C: 2 }[type] : 3,
+    });
+  }
+  return out;
+}
+
+function student_(row, fc, pen) {
+  const udise = padUdise_(row[fc('Last UDISE Code')]);
+  const ok = /^\d{11}$/.test(udise);
+  const elig = intOf_(row[fc('Eligible Class to Import')]);
+  const level = elig !== null ? elig : intOf_(row[fc('Last Class')]);
+  return { pen: pen, row: row, fc: fc, udise: udise, dcode: ok ? udise.slice(0, 4) : '', bcode: ok ? udise.slice(0, 6) : '',
+           sex: String(row[fc('Sex')]).trim().toUpperCase(), level: level,
+           course: level === 9 || level === 10 ? 2 : level === 11 || level === 12 ? 3 : null };
+}
+
+const genderOk_ = (c, sex) => c.gender === 'Both' || (c.gender === 'Girls' && sex === 'FEMALE') || (c.gender === 'Boys' && sex === 'MALE');
+const courseOk_ = (c, course) => course === null || [course === 2 ? 'Secondary' : 'Sr. Secondary', 'Both', 'Not specified'].indexOf(c.course) >= 0;
+
+function mapper_(centres) {
+  const allot = new Map(), byBlock = new Map(), byDist = new Map();
+  const push = (m, k, u) => { if (!m.has(k)) m.set(k, []); m.get(k).push(u); };
+  centres.forEach((c, u) => { push(byBlock, c.bcode, u); push(byDist, c.dcode, u); });
+  const n = u => allot.get(u) || 0;
+  const free = u => n(u) < centres.get(u).seats;
+  const key = u => [n(u) / Math.max(centres.get(u).seats, 1), centres.get(u).typeRank, centres.get(u).pmshri ? 0 : 1];
+  const best = us => {  // lowest allotted/seats, then Type A > B > C, then PM Shri first
+    let b = null, bk = null;
+    us.forEach(u => {
+      const k = key(u);
+      const less = !b || k[0] < bk[0] || (k[0] === bk[0] && (k[1] < bk[1] || (k[1] === bk[1] && (k[2] < bk[2] || (k[2] === bk[2] && u < b)))));
+      if (less) { b = u; bk = k; }
+    });
+    return b;
+  };
+  const suitable = (u, st) => genderOk_(centres.get(u), st.sex) && courseOk_(centres.get(u), st.course) && free(u);
+  const scopes = st => [byBlock.get(st.bcode) || [], byDist.get(st.dcode) || []];
+  return {
+    take: u => { if (u) allot.set(u, n(u) + 1); },
+    firstPass: st => {
+      if (centres.has(st.udise) && suitable(st.udise, st)) return [st.udise, B_OWN];
+      const [blk, dist] = scopes(st);
+      let u = best(blk.filter(x => suitable(x, st)));
+      if (u) return [u, B_BLOCK];
+      u = best(dist.filter(x => suitable(x, st)));
+      if (u) return [u, B_DIST];
+      for (const scope of [blk, dist]) {
+        u = best(scope.filter(x => genderOk_(centres.get(x), st.sex) && free(x)));
+        if (u) return [u, B_COURSE];
+      }
+      return [null, null];
+    },
+    secondPass: st => {
+      for (const scope of scopes(st)) {
+        if (!scope.length) continue;
+        const fit = us => { const f = us.filter(x => courseOk_(centres.get(x), st.course)); return f.length ? f : us; };
+        const groups = [scope.filter(x => genderOk_(centres.get(x), st.sex)), scope.filter(free), scope];
+        for (const g of groups) {
+          if (!g.length) continue;  // prefer a full centre of the right gender over a wrong-gender one
+          const u = best(fit(g)), gOk = genderOk_(centres.get(u), st.sex), fOk = free(u);
+          return [u, gOk ? X_SEATS : fOk ? X_GENDER : X_BOTH];
+        }
+      }
+      return [null, NO_CENTRE];
+    },
+  };
+}
+
+function newCell_(h, st, centres) {
+  const r = st.row, fc = st.fc, c = st.u ? centres.get(st.u) : null;
+  switch (h) {
+    case 'Student PEN': return st.pen;
+    case 'Last UDISE Code': return st.udise;
+    case 'Sex': return st.sex;
+    case 'Eligible Class to Import': return st.level === null ? '' : st.level;
+    case 'Current Status': return 'Not Studying';
+    case 'Admission Basis': return st.basis;
+    case UDISE_COL: return st.u || '';
+  }
+  if (CENTRE_COLS[h]) return c ? c[CENTRE_COLS[h]] : '';
+  return fc(h) >= 0 ? String(r[fc(h)] || '').trim() : '';
+}
+
+// ---- NIOS admission format (63 columns; only the agreed cells filled) ----
+function niosRow_(r, hc, width, f, fc) {
+  const out = new Array(width).fill('');
+  const get = h => String(r[hc(h)] === null || r[hc(h)] === undefined ? '' : r[hc(h)]).trim();
+  const fget = h => (f && fc(h) >= 0 ? String(f[fc(h)] || '').trim() : '');
+  const level = intOf_(get('Eligible Class to Import'));
+  const lastClass = fget('Last Class') || get('Eligible Class to Import');
+  const addr = 'Block ' + titleCase_(get('Block Name')) + ', District ' + titleCase_(get('District Name')) + ', Uttar Pradesh';
+  const set = (i, v) => { if (i < width) out[i] = v === null || v === undefined ? '' : v; };
+  if (get(UDISE_COL)) set(2, get('Centre Name') + ', ' + titleCase_(get('Centre Block')) + ', ' + titleCase_(get('Centre District')));
+  set(3, level === 9 || level === 10 ? 2 : level === 11 || level === 12 ? 3 : '');
+  set(4, 1); set(6, get('Centre Email')); set(7, get('Mobile No')); set(8, get('Student Name'));
+  set(9, get('Father Name')); set(10, get('Mother Name')); set(11, dob_(fget('Date of Birth (DOB)')));
+  set(12, aadhaar_(fget('Aadhaar Number'))); set(13, get('Sex').toLowerCase()); set(15, 'Hindi');
+  set(32, lastClass ? 'Class ' + lastClass : ''); set(33, 'Failed'); set(34, addr); set(41, addr);
+  set(37, 'Uttar Pradesh'); set(44, 'Uttar Pradesh'); set(38, get('District Name')); set(45, get('District Name'));
+  set(39, get('Centre Pin')); set(46, get('Centre Pin')); set(48, get(UDISE_COL));
+  return out;
+}
+
+function dob_(v) {
+  const t = String(v || '').trim().slice(0, 10);
+  let m = t.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/), y, mo, d;
+  if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; } else if ((m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/))) { d = +m[1]; mo = +m[2]; y = +m[3]; } else return '';
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+  return String(d).padStart(2, '0') + '-' + String(mo).padStart(2, '0') + '-' + y;
+}
+
+function aadhaar_(v) {
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.length !== 12 || /^(\d)\1+$/.test(d) || d === '123456789012' || d === '012345678901') return '';
+  return d;
+}
+
+// ---- Centre-wise Count ----
+function centreCount_(centres, rows, hc) {
+  const n = {}, m = {};
+  rows.forEach(r => {
+    const u = r[hc(UDISE_COL)];
+    n[u] = (n[u] || 0) + 1;
+    if (String(r[hc('Sex')]).toUpperCase() === 'MALE') m[u] = (m[u] || 0) + 1;
+  });
+  const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+  const list = [...centres.values()].sort((a, b) => cmp(a.dcode, b.dcode) || cmp(a.block, b.block) || cmp(a.name, b.name) || cmp(a.udise, b.udise));
+  const out = list.map((c, i) => [i + 1, c.district, c.block, c.udise, c.name, c.gender, c.type, c.seats,
+                                   n[c.udise] || 0, m[c.udise] || 0, (n[c.udise] || 0) - (m[c.udise] || 0), c.seats - (n[c.udise] || 0)]);
+  const sum = k => out.reduce((a, r) => a + r[k], 0);
+  out.push(['', '', '', '', 'TOTAL', '', '', sum(7), sum(8), sum(9), sum(10), sum(11)]);
+  return out;
+}
+
+// ---- sheet I/O ----
+function headerOf_(sh) {
+  return sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0].filter(String);
+}
+
+function readTab_(sh, keyCol) {
+  const h = headerRow_(sh, keyCol);
   const headers = h.headers.filter(String);
   const n = Math.max(sh.getLastRow() - h.row, 0);
   const rows = n ? sh.getRange(h.row + 1, 1, n, headers.length).getValues() : [];
-  const filled = rows.filter(r => String(r[0]).trim() !== '');
-  return { sh: sh, headerRow: h.row, headers: headers, rows: filled, oldCount: n, hadBlanks: filled.length !== rows.length };
+  return { headerRow: h.row, headers: headers, rows: rows.filter(r => String(r[0]).trim() !== '') };
 }
 
-// Rewrites the data block from the first changed row; IDs are kept as text.
-function writeTab_(t, rows) {
-  const width = t.headers.length, first = t.headerRow + 1;
+// Rewrites the tab from its first row that differs; IDs are written as text.
+function writeDiff_(sh, rows, width, textCols, dry) {
+  const top = sh.getRange(1, 1, Math.min(3, Math.max(sh.getLastRow(), 1)), width).getDisplayValues();
+  let first = 2; // data starts under the header; tabs with a title row have the header in row 2
+  for (let r = 0; r < top.length; r++) if (top[r].filter(String).length >= Math.min(5, width)) { first = r + 2; break; }
+  const n = Math.max(sh.getLastRow() - first + 1, 0);
+  const cur = n ? sh.getRange(first, 1, n, width).getValues() : [];
+  const key = r => r.map(v => (v === null || v === undefined ? '' : String(v))).join('\u0001');
   let start = 0;
-  while (!t.hadBlanks && start < rows.length && start < t.rows.length && rows[start] === t.rows[start]) start++;
-  const tail = rows.slice(start);
-  if (tail.length) {
-    TEXT_COLS.forEach(name => {
-      const c = t.headers.indexOf(name);
-      if (c >= 0) t.sh.getRange(first + start, c + 1, tail.length, 1).setNumberFormat('@');
-    });
-    const out = tail.map(r => r.map((v, c) => t.headers[c] === UDISE_COL ? code_(v) : TEXT_COLS.indexOf(t.headers[c]) >= 0 ? String(v) : v));
-    for (let i = 0; i < out.length; i += 5000) { // chunked: one 36k-row write can time out
-      const part = out.slice(i, i + 5000);
-      t.sh.getRange(first + start + i, 1, part.length, width).setValues(part);
+  const lim = Math.min(cur.length, rows.length);
+  while (start < lim && key(cur[start]) === key(rows[start])) start++;
+  const tail = rows.slice(start), cleared = Math.max(cur.length - rows.length, 0);
+  if (!dry) {
+    if (tail.length) {
+      textCols.forEach(c => { if (c >= 0) sh.getRange(first + start, c + 1, tail.length, 1).setNumberFormat('@'); });
+      const out = tail.map(r => r.map((v, c) => (textCols.indexOf(c) >= 0 && v !== '' ? String(v) : v)));
+      for (let i = 0; i < out.length; i += 4000) { // chunked: one huge write can time out
+        const part = out.slice(i, i + 4000);
+        sh.getRange(first + start + i, 1, part.length, width).setValues(part);
+      }
     }
+    if (cleared) sh.getRange(first + rows.length, 1, cleared, width).clearContent();
   }
-  const extra = t.oldCount - rows.length;
-  if (extra > 0) t.sh.getRange(first + rows.length, 1, extra, width).clearContent();
-}
-
-// Centre list with details copied from an existing student row, and live seat counts.
-function centreTable_(ss, rows, H) {
-  const hc = n => H.indexOf(n);
-  const sh = ss.getSheetByName(CENTRES_TAB);
-  const h = headerRow_(sh, 'Centre UDISE');
-  const v = sh.getRange(h.row + 1, 1, sh.getLastRow() - h.row, h.headers.length).getDisplayValues();
-  const col = n => h.headers.indexOf(n);
-  const byCode = new Map();
-  v.forEach(r => {
-    const u = code_(r[col('Centre UDISE')]);
-    if (!u) return;
-    byCode.set(u, { udise: u, name: r[col('Centre Name')], district: key_(r[col('District')]), block: key_(r[col('Block')]), blockName: r[col('Block')], districtName: r[col('District')],
-                    gender: r[col('Gender')], type: r[col('Type')], seats: Number(r[col('Seats')]) || 0, used: 0, template: null });
-  });
-  rows.forEach(r => {
-    const c = byCode.get(code_(r[hc('Centre UDISE Code')]));
-    if (!c) return;
-    c.used++;
-    if (!c.template) c.template = r;
-  });
-  return byCode;
-}
-
-const norm_ = s => String(s || '').trim().toUpperCase();
-const key_ = s => norm_(s).replace(/[^A-Z0-9]/g, '');
-
-// 1 - edit distance / longer length; "MAHARAJGANJ" vs "MAHARJGANJ" = 0.91
-function similar_(a, b) {
-  if (a === b) return 1;
-  const m = a.length, n = b.length;
-  if (!m || !n) return 0;
-  let prev = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    const cur = [i];
-    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    prev = cur;
-  }
-  return 1 - prev[n] / Math.max(m, n);
-}
-const genderOk_ = (centreGender, sex) => centreGender === 'Both' || (centreGender === 'Girls' && sex === 'FEMALE') || (centreGender === 'Boys' && sex === 'MALE');
-
-function pickCentre_(centres, district, block, sex, ownUdise) {
-  const own = centres.get(code_(ownUdise));
-  if (own) return [own, 'Own school is a NIOS centre'];
-  const inDist = [...centres.values()].filter(c => c.district === district);
-  const free = c => c.seats - c.used > 0;
-  const best = list => list.sort((a, b) => (b.seats - b.used) - (a.seats - a.used))[0];
-  let sameBlock = inDist.filter(c => c.block === block);
-  if (!sameBlock.length && block) { // spelling differences, e.g. "PURE DALAI" / "PUREDALAI"
-    const near = inDist.map(c => [similar_(c.block, block), c]).filter(x => x[0] >= 0.8).sort((a, b) => b[0] - a[0])[0];
-    if (near) sameBlock = inDist.filter(c => c.block === near[1].block);
-  }
-  let c = best(sameBlock.filter(c => genderOk_(c.gender, sex) && free(c)));
-  if (c) return [c, 'Centre in same block'];
-  c = best(inDist.filter(c => genderOk_(c.gender, sex) && free(c)));
-  if (c) return [c, 'Centre in same district (other block)'];
-  c = best(inDist.filter(free));
-  if (c) return [c, 'Exception: gender not matching - verify'];
-  c = best(inDist.filter(c => genderOk_(c.gender, sex)));
-  if (c) return [c, 'Exception: seats exceeded - verify'];
-  c = best(inDist);
-  if (c) return [c, 'Exception: gender + seats - verify'];
-  return [null, 'No NIOS centre in district - verify'];
-}
-
-function newStudentRow_(f, fc, H, centres) {
-  const sex = norm_(f[fc('Sex')]);
-  const [c, basis] = pickCentre_(centres, key_(f[fc('District Name')]), key_(f[fc('Block Name')]), sex, f[fc('Last UDISE Code')]);
-  if (c) c.used++;
-  const eligible = String(f[fc('Last Class')] || '').trim(); // All Student Data keeps the last class here
-  const studentCols = ['Student PEN', 'District Name', 'Block Name', 'Last UDISE Code', 'Last School Name', 'Student Name', 'Sex',
-                       'Mobile No', 'Mother Name', 'Father Name', 'Academic Year'];
-  return H.map((name, i) => {
-    if (studentCols.indexOf(name) >= 0) return String(f[fc(name)] || '').trim();
-    if (name === 'Eligible Class to Import') return eligible !== '' && !isNaN(eligible) ? Number(eligible) : eligible;
-    if (name === 'Current Status') return 'Not Studying';
-    if (name === 'Admission Basis') return basis;
-    if (!c) return '';
-    if (c.template) return c.template[i];
-    return { 'Centre UDISE Code': c.udise, 'Centre Name': c.name, 'Centre Block': c.blockName, 'Centre District': c.districtName,
-             'Centre Gender': c.gender, 'Centre Type': c.type, 'Centre Seats': c.seats }[name] || '';
-  });
+  return { fromRow: first + start, rowsWritten: tail.length, rowsCleared: cleared };
 }
 
 function appendExcluded_(ss, H, excluded) {
@@ -277,19 +403,17 @@ function appendExcluded_(ss, H, excluded) {
     sh.setFrozenRows(1);
   }
   const when = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'dd-MM-yyyy HH:mm');
-  const rows = excluded.map(([why, r]) => r.map((v, c) => TEXT_COLS.indexOf(H[c]) >= 0 ? String(v) : v).concat([why, when]));
+  const rows = excluded.map(([w, r]) => r.map((v, c) => MAP_TEXT.indexOf(H[c]) >= 0 ? String(v) : v).concat([w, when]));
   const start = sh.getLastRow() + 1;
-  TEXT_COLS.forEach(name => { const c = H.indexOf(name); if (c >= 0) sh.getRange(start, c + 1, rows.length, 1).setNumberFormat('@'); });
+  MAP_TEXT.forEach(name => { const c = H.indexOf(name); if (c >= 0) sh.getRange(start, c + 1, rows.length, 1).setNumberFormat('@'); });
   sh.getRange(start, 1, rows.length, head.length).setValues(rows);
 }
 
 function log_(ss, s) {
-  let sh = ss.getSheetByName(LOG_TAB);
-  if (!sh) {
-    sh = ss.insertSheet(LOG_TAB);
-    sh.appendRow(['Time', 'Field students', 'Added (All)', 'Added (213)', 'Removed (All)', 'Removed (213)', 'All Student Data', 'MAP Data 213 centre', 'Removed by reason']);
-    sh.setFrozenRows(1);
-  }
-  sh.appendRow([Utilities.formatDate(new Date(), 'Asia/Kolkata', 'dd-MM-yyyy HH:mm'), s.fieldStudents, s.added, s.addedFinal,
-                s.removedAll, s.removedFinal, s.allAfter, s.finalAfter, JSON.stringify(s.removedByReason)]);
+  const sh = ss.getSheetByName(LOG_TAB) || ss.insertSheet(LOG_TAB);
+  const head = ['Time', 'Valid students (field)', 'Added', 'Added by basis', 'Removed', 'Relabelled', 'All Student Data', 'MAP Data 213 centre', 'Removed by reason'];
+  sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  sh.appendRow([Utilities.formatDate(new Date(), 'Asia/Kolkata', 'dd-MM-yyyy HH:mm'), s.validStudents, s.added, JSON.stringify(s.addedBasis),
+                s.removed, s.relabelled, s.allAfter, s.map213After, JSON.stringify(s.removedByReason)]);
 }
