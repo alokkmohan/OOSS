@@ -150,7 +150,7 @@
 
   <div class="page-header">
     <h1>Out-of-School Student: Field Data Collection</h1>
-    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.40</span><span id="pendingBadge" onclick="manualSyncPending()" style="display:none; background:#d97706; color:#fff; font-size:0.75rem; font-weight:700; padding:2px 10px; border-radius:10px; margin-left:6px; cursor:pointer;" title="Click to sync with Google Sheet now"></span></p>
+    <p class="sub">District चुनें, फिर list में से student का status भरें। <span class="badge-v136" style="background:#1c3866;color:#fff;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;">Version: v1.41</span><span id="pendingBadge" onclick="manualSyncPending()" style="display:none; background:#d97706; color:#fff; font-size:0.75rem; font-weight:700; padding:2px 10px; border-radius:10px; margin-left:6px; cursor:pointer;" title="Click to sync with Google Sheet now"></span></p>
   </div>
 
   <div class="card">
@@ -177,12 +177,44 @@
         <input type="text" id="quickSearchInput" placeholder="Type UDISE Code, School, or Student Name..." disabled>
       </div>
     </div>
-    <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;">
+    <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
       <label style="display: inline-flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 600; cursor: pointer; user-select: none;">
         <input type="checkbox" id="chkHideCompleted" checked style="width: 17px; height: 17px; accent-color: var(--navy); cursor: pointer;">
         <span>केवल शेष (Not Recorded) छात्र दिखाएँ &bull; पूर्ण हो चुके छात्र व विद्यालय छिपाएँ</span>
       </label>
-      <div id="filterCounts" style="font-size: 0.78rem; color: var(--muted); font-weight: 600;"></div>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div id="filterCounts" style="font-size: 0.78rem; color: var(--muted); font-weight: 600;"></div>
+        <div class="download-dropdown" style="position: relative; display: inline-block;">
+          <button type="button" id="btnDownload" onclick="toggleDownloadMenu(event)" disabled style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.82rem; font-weight: 600; color: #fff; background: var(--navy); border: 1px solid var(--navy); border-radius: 6px; cursor: not-allowed; opacity: 0.55; transition: all 0.2s;" title="Select a district first to download student list">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>📥 डाउनलोड छात्र सूची (CSV)</span>
+            <span style="font-size: 0.65rem; margin-left: 2px;">▼</span>
+          </button>
+          <div id="downloadMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 100; min-width: 260px; overflow: hidden; padding: 4px 0;">
+            <div onclick="downloadStudentsCsv('all')" style="padding: 10px 14px; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text); transition: background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+              <span style="font-size: 1.1rem;">📑</span>
+              <div>
+                <div style="font-weight: 600;">सभी छात्र (All Students)</div>
+                <div style="font-size: 0.7rem; color: var(--muted);">शेष (Pending) और पूर्ण (Completed) सभी रिकॉर्ड्स</div>
+              </div>
+            </div>
+            <div onclick="downloadStudentsCsv('pending')" style="padding: 10px 14px; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text); border-top: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+              <span style="font-size: 1.1rem;">⏳</span>
+              <div>
+                <div style="font-weight: 600; color: #b45309;">केवल शेष छात्र (Pending Only)</div>
+                <div style="font-size: 0.7rem; color: var(--muted);">जिनका अभी सर्वे नहीं हुआ है</div>
+              </div>
+            </div>
+            <div onclick="downloadStudentsCsv('completed')" style="padding: 10px 14px; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text); border-top: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+              <span style="font-size: 1.1rem;">✅</span>
+              <div>
+                <div style="font-weight: 600; color: #15803d;">केवल पूर्ण छात्र (Completed Only)</div>
+                <div style="font-size: 0.7rem; color: var(--muted);">जिनका सर्वे पूरा हो चुका है</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="status"></div>
   </div>
@@ -312,7 +344,7 @@
   </div>
 
   <footer style="text-align:center;padding:16px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);margin-top:20px;">
-    <div>Field Data Collection Portal &bull; System Version: v1.40 (Build 40)</div>
+    <div>Field Data Collection Portal &bull; System Version: v1.41 (Build 41)</div>
   </footer>
 
   <script>
@@ -579,10 +611,16 @@
 
     function updateCountsDisplay() {
       const filterCounts = document.getElementById('filterCounts');
-      if (!filterCounts) return;
-      const district = document.getElementById('districtSelect').value;
+      const btnDownload = document.getElementById('btnDownload');
+      const district = document.getElementById('districtSelect')?.value;
       if (!district || !districtDataCache[district]) {
-        filterCounts.innerHTML = '';
+        if (filterCounts) filterCounts.innerHTML = '';
+        if (btnDownload) {
+          btnDownload.disabled = true;
+          btnDownload.style.opacity = '0.55';
+          btnDownload.style.cursor = 'not-allowed';
+          btnDownload.title = 'Select a district first to download student list';
+        }
         return;
       }
       const all = districtDataCache[district];
@@ -590,7 +628,15 @@
       const pending = all.filter(s => !isStudentRecorded(s)).length;
       const completed = total - pending;
       const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-      filterCounts.innerHTML = `<span style="color:var(--orange);">शेष (Not Recorded): <strong>${pending}</strong></span> &bull; <span style="color:var(--green);">पूर्ण: <strong>${completed}</strong> (${pct}%)</span> &bull; कुल: <strong>${total}</strong>`;
+      if (filterCounts) {
+        filterCounts.innerHTML = `<span style="color:var(--orange);">शेष (Not Recorded): <strong>${pending}</strong></span> &bull; <span style="color:var(--green);">पूर्ण: <strong>${completed}</strong> (${pct}%)</span> &bull; कुल: <strong>${total}</strong>`;
+      }
+      if (btnDownload) {
+        btnDownload.disabled = false;
+        btnDownload.style.opacity = '1';
+        btnDownload.style.cursor = 'pointer';
+        btnDownload.title = `Click to download students of ${district}`;
+      }
     }
 
     function updateSchoolDropdown(district, selectedSchoolToKeep = null) {
@@ -1091,6 +1137,143 @@
         showSuccessPopup(targetStudent.name, true);
         setStatus(`Status for ${targetStudent.name} saved in browser storage (Pending Google Sheet sync).`, 'warning');
       });
+    }
+
+    function toggleDownloadMenu(e) {
+      if (e) e.stopPropagation();
+      const btn = document.getElementById('btnDownload');
+      if (btn && btn.disabled) return;
+      const menu = document.getElementById('downloadMenu');
+      if (!menu) return;
+      menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+    }
+
+    document.addEventListener('click', function (e) {
+      const menu = document.getElementById('downloadMenu');
+      const btn = document.getElementById('btnDownload');
+      if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.style.display = 'none';
+      }
+    });
+
+    function downloadStudentsCsv(mode) {
+      const districtSel = document.getElementById('districtSelect');
+      const district = districtSel ? districtSel.value : '';
+      if (!district || !districtDataCache[district]) {
+        alert('कृपया पहले एक District चुनें।');
+        return;
+      }
+
+      const menu = document.getElementById('downloadMenu');
+      if (menu) menu.style.display = 'none';
+
+      let list = districtDataCache[district] || [];
+      let filterLabel = 'All_Students';
+
+      if (mode === 'pending') {
+        list = list.filter(s => !isStudentRecorded(s));
+        filterLabel = 'Pending_Students';
+      } else if (mode === 'completed') {
+        list = list.filter(s => isStudentRecorded(s));
+        filterLabel = 'Completed_Students';
+      }
+
+      if (!list.length) {
+        alert('चयनित फ़िल्टर के अनुसार कोई छात्र नहीं मिला।');
+        return;
+      }
+
+      const headers = [
+        'District',
+        'Block Name',
+        'UDISE Code',
+        'School Name',
+        'Student PEN',
+        'Student Name',
+        'Sex',
+        'Mobile No',
+        'Mother Name',
+        'Father Name',
+        'Class',
+        'Survey Status',
+        'Willing to Resume Study',
+        'Study Mode',
+        'Target Class',
+        'Reason for Not Studying',
+        'Date of Birth (DOB)',
+        'Aadhaar Number',
+        'Collected By',
+        'Updated At'
+      ];
+
+      function escapeCsv(val) {
+        if (val === null || val === undefined) return '""';
+        const s = String(val).replace(/"/g, '""');
+        return `"${s}"`;
+      }
+
+      const rows = list.map(s => {
+        const isRecorded = isStudentRecorded(s);
+        let surveyStatus = 'Pending (सर्वे शेष)';
+        if (isRecorded) {
+          if (s.reason === 'Death') {
+            surveyStatus = 'Death (मृत्यु)';
+          } else if (s.currentStatus === 'Studying') {
+            surveyStatus = 'Studying (पढ़ रहा है)';
+          } else if (s.currentStatus === 'Not Studying') {
+            surveyStatus = 'Not Studying (नहीं पढ़ रहा है)';
+          } else {
+            surveyStatus = s.currentStatus || 'Completed';
+          }
+        }
+
+        const isNotStudying = (s.currentStatus === 'Not Studying');
+        const isWilling = isNotStudying && (s.willing === 'Yes');
+        const isNotWilling = isNotStudying && (s.willing === 'No');
+
+        const willing = isNotStudying ? (s.willing === 'Yes' ? 'Yes (हाँ)' : (s.willing === 'No' ? 'No (नहीं)' : '-')) : '-';
+        const modeVal = isWilling ? (s.mode || '-') : '-';
+        const targetClass = isWilling ? (s.targetClass || s.eligibleClass || '-') : '-';
+        const reason = isNotWilling ? (s.reason || '-') : (s.reason === 'Death' ? 'Death' : '-');
+        const dob = (isWilling && s.dob) ? s.dob : '-';
+        const aadhaar = (isWilling && s.aadhaar) ? s.aadhaar : '-';
+
+        return [
+          escapeCsv(s.district || district),
+          escapeCsv(s.block || ''),
+          escapeCsv(s.udise || ''),
+          escapeCsv(s.school || ''),
+          escapeCsv(s.pen || ''),
+          escapeCsv(s.name || ''),
+          escapeCsv(s.sex || ''),
+          escapeCsv(s.mobile || ''),
+          escapeCsv(s.mother || ''),
+          escapeCsv(s.father || ''),
+          escapeCsv(s.studentClass || s.class || ''),
+          escapeCsv(surveyStatus),
+          escapeCsv(willing),
+          escapeCsv(modeVal),
+          escapeCsv(targetClass),
+          escapeCsv(reason),
+          escapeCsv(dob),
+          escapeCsv(aadhaar),
+          escapeCsv(s.collectedBy || ''),
+          escapeCsv(s.updatedAt || '')
+        ].join(',');
+      });
+
+      const csvContent = '\uFEFF' + headers.map(escapeCsv).join(',') + '\r\n' + rows.join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cleanDist = district.replace(/[^a-zA-Z0-9_\u0900-\u097F]/g, '_');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `Students_${cleanDist}_${filterLabel}_${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     function escapeHtml(s) {
