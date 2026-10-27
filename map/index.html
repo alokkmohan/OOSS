@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NIOS Centre छात्र सूची</title>
+<title>NIOS छात्र सूची</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Mukta:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
+/* Layout: tabs → three numbered steps (District, Block, Centre) → centre-wise counts and student list with a sticky login/download rail. */
 :root{
   --paper:#f3f5f4; --sheet:#ffffff; --ink:#15212a; --muted:#56656c; --rule:#d5dcd9; --field:#f8faf9;
   --accent:#e08e0b; --accent-ink:#241500; --teal:#17656e; --teal-soft:#e2efee; --on-teal:#ffffff;
@@ -20,177 +21,386 @@
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
 [hidden]{display:none!important}
-.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 56px;display:grid;gap:20px}
-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:12px}
-h1{font-family:var(--f-display);font-weight:800;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.1;margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 56px;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(1.6rem,4vw,2.2rem);line-height:1.1;margin:0}
 h1 small{display:block;font-family:var(--f-body);font-weight:500;font-size:.95rem;color:var(--muted);margin-top:4px}
+.meta{font-family:var(--f-data);font-size:.78rem;color:var(--muted);text-align:right}
 button{font:inherit;cursor:pointer}
-button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.out{background:none;border:1.5px solid var(--ink);color:var(--ink);border-radius:8px;padding:6px 14px;font-weight:600}
-
-/* login */
-.login{max-width:420px;width:100%;margin:6vh auto 0;background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:28px;display:grid;gap:16px}
-.login h2{font-family:var(--f-display);font-size:1.4rem;margin:0}
-.login p{margin:0;color:var(--muted);font-size:.95rem}
-.fld{display:grid;gap:4px}
-.fld span{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.fld input{font:inherit;font-family:var(--f-data);font-size:1.1rem;padding:11px 12px;border:2px solid var(--rule);border-radius:8px;background:var(--field);color:var(--ink);width:100%}
-.login .star{font-size:.88rem;color:var(--warn);border-top:1px solid var(--rule);padding-top:12px}
-.go{background:var(--teal);color:var(--on-teal);border:0;border-radius:10px;padding:13px;font-weight:700;font-size:1.05rem}
+nav.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;max-width:780px}
+nav.tabs button{text-align:left;border:2px solid var(--rule);background:var(--sheet);color:var(--ink);padding:10px 16px;border-radius:10px}
+nav.tabs button b{display:block;font-family:var(--f-display);font-size:1.15rem;font-weight:700}
+nav.tabs button span{font-size:.85rem;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{border-color:var(--teal);background:var(--teal);color:var(--on-teal)}
+nav.tabs button[aria-selected="true"] span{color:var(--on-teal);opacity:.85}
+button:focus-visible,select:focus-visible,input:focus-visible,label.chk:focus-within,.schools label:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+.steps{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;display:grid}
+.step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;padding:18px;border-bottom:1px solid var(--rule)}
+.step:last-child{border-bottom:0}
+.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:1.1rem;background:var(--teal);color:var(--on-teal)}
+.step.off .num{background:var(--rule);color:var(--muted)}
+.step-b{display:grid;gap:10px;min-width:0}
+.step-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+.step-h h2{font-family:var(--f-display);font-weight:700;font-size:1.15rem;margin:0}
+.hint{font-size:.9rem;color:var(--muted)}
+.lnk{font-size:.9rem;background:none;border:0;color:var(--teal);text-decoration:underline;padding:2px;font-weight:600}
+select{font:inherit;font-size:1.05rem;width:100%;max-width:420px;padding:10px 12px;border:2px solid var(--rule);border-radius:8px;background:var(--field);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+label.chk{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--rule);border-radius:8px;padding:6px 12px;cursor:pointer;background:var(--field);user-select:none}
+label.chk input{accent-color:var(--teal);margin:0;width:16px;height:16px}
+label.chk:has(input:checked){background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+label.chk .c{font-family:var(--f-data);font-size:.8rem;opacity:.8}
+.schools{max-height:300px;overflow:auto;border:2px solid var(--rule);border-radius:8px;background:var(--field)}
+.schools label{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--rule);cursor:pointer}
+.schools label:last-child{border-bottom:0}
+.schools label:hover{background:var(--teal-soft)}
+.schools label:has(input:checked){background:var(--teal-soft);box-shadow:inset 4px 0 0 var(--teal)}
+.schools input{accent-color:var(--teal);width:18px;height:18px;margin:0}
+.schools .nm{min-width:0;font-weight:500} .schools .nm small{display:block;font-weight:400;color:var(--muted);font-family:var(--f-data);font-size:.78rem}
+.schools .ct{font-family:var(--f-data);font-size:.9rem;color:var(--muted)}
+.wait{padding:14px;color:var(--muted);font-size:.95rem;border:2px dashed var(--rule);border-radius:8px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}.rail{order:-1;position:static!important}}
+.rail{position:sticky;top:12px;background:var(--sheet);border:2px solid var(--ink);border-radius:12px;padding:18px;display:grid;gap:14px}
+.lbl{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.big{font-family:var(--f-data);font-size:2.4rem;font-weight:500;line-height:1;font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:.95rem}
+.kv b{font-family:var(--f-data);font-weight:500;text-align:right}
+.scope{font-size:.92rem;border-top:1px solid var(--rule);padding-top:12px;display:grid;gap:2px}
+.scope span{color:var(--muted)}
+.login{display:grid;gap:10px;border-top:1px solid var(--rule);padding-top:14px}
+.login h3{font-family:var(--f-display);font-size:1.1rem;margin:0}
+.fld{display:grid;gap:3px}
+.fld span{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.fld input{font:inherit;font-family:var(--f-data);padding:9px 10px;border:2px solid var(--rule);border-radius:8px;background:var(--field);color:var(--ink);width:100%}
+.go{background:var(--teal);color:var(--on-teal);border:0;border-radius:8px;padding:10px;font-weight:700}
 .go:disabled{opacity:.6;cursor:wait}
-.msg{font-size:.92rem;color:var(--muted)} .msg.err{color:var(--warn);font-weight:600} .msg.ok{color:var(--ok)}
-
-/* centre card */
-.card{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
-@media (max-width:640px){.card{grid-template-columns:1fr}}
-.card h2{font-family:var(--f-display);font-size:1.35rem;margin:0;line-height:1.2}
-.card .sub{color:var(--muted);font-size:.95rem}
-.code{border:2px solid var(--teal);border-radius:10px;padding:10px 16px;text-align:center}
-.code span{display:block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.code b{font-family:var(--f-data);font-size:1.6rem;font-weight:500;color:var(--teal);letter-spacing:.04em}
-
-.tabs{display:flex;gap:8px;flex-wrap:wrap}
-.tabs button{border:2px solid var(--rule);background:var(--sheet);color:var(--ink);padding:9px 18px;border-radius:10px;text-align:left}
-.tabs button b{display:block;font-family:var(--f-display);font-size:1.1rem}
-.tabs button span{font-size:.85rem;color:var(--muted)}
-.tabs button[aria-selected="true"]{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
-.tabs button[aria-selected="true"] span{color:var(--on-teal)}
-
-.bar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:14px 18px}
-.stats{display:flex;flex-wrap:wrap;gap:8px 28px}
-.stats div span{display:block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.stats div b{font-family:var(--f-data);font-size:1.6rem;font-weight:500;font-variant-numeric:tabular-nums}
-.dl{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:12px 20px;font-weight:700;font-size:1.05rem}
+.star{font-size:.82rem;color:var(--warn);margin:0}
+.who{display:grid;gap:4px;border-top:1px solid var(--rule);padding-top:12px;font-size:.92rem}
+.who b{font-family:var(--f-data);color:var(--teal)}
+.out{background:none;border:1.5px solid var(--ink);color:var(--ink);border-radius:8px;padding:5px 12px;font-weight:600;justify-self:start}
+.dl{font-weight:700;border:0;border-radius:10px;padding:14px 16px;font-size:1.1rem;background:var(--accent);color:var(--accent-ink);width:100%}
+.dl small{display:block;font-weight:500;font-size:.8rem;opacity:.85}
 .dl:disabled{opacity:.45;cursor:not-allowed}
-
-.tbl{overflow:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);max-height:70vh}
+.msg{font-size:.9rem;color:var(--muted)} .msg.err{color:var(--warn);font-weight:600} .msg.ok{color:var(--ok)}
+.list{display:grid;gap:22px;min-width:0}
+.sec{display:grid;gap:8px;min-width:0}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.sec-h h2{font-family:var(--f-display);font-weight:700;font-size:1.2rem;margin:0}
+.tbl{overflow:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);max-height:460px}
 table{border-collapse:collapse;width:100%;font-size:.9rem}
 th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap}
-th{position:sticky;top:0;background:var(--teal-soft);font-weight:600}
+th{position:sticky;top:0;background:var(--teal-soft);font-weight:600;z-index:1}
 td.n,th.n{text-align:right;font-family:var(--f-data);font-variant-numeric:tabular-nums}
+td.code{font-family:var(--f-data);font-size:.82rem}
+td.ai{font-family:var(--f-data);font-size:1.05rem;font-weight:500;color:var(--teal)}
+tfoot td{font-weight:700;background:var(--field);position:sticky;bottom:0}
+.over{color:var(--warn);font-weight:700}
 .empty{padding:36px;text-align:center;color:var(--muted)}
+.locked{padding:28px;text-align:center;color:var(--muted);border:2px dashed var(--rule);border-radius:10px;background:var(--sheet)}
+.codes{display:grid;gap:12px}
+.codes-h{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.codes-h input{font:inherit;width:100%;max-width:420px;padding:10px 12px;border:2px solid var(--rule);border-radius:8px;background:var(--field);color:var(--ink)}
+.note{font-size:.9rem;color:var(--muted);background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:12px 14px}
+.cp{font-size:.82rem;border:1.5px solid var(--teal);background:transparent;color:var(--teal);border-radius:6px;padding:3px 10px}
+.cp.done{background:var(--teal);color:var(--on-teal)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>NIOS Centre छात्र सूची<small>Out of School students · NIOS Centre Mapping · Uttar Pradesh</small></h1>
-    <button type="button" class="out" id="logout" hidden>Logout</button>
+    <h1>NIOS छात्र सूची<small>Out of School students · NIOS Centre Mapping · Uttar Pradesh</small></h1>
+    <div class="meta" id="meta">डेटा लोड हो रहा है…</div>
   </header>
 
-  <form class="login" id="loginView" autocomplete="on">
-    <h2>Centre Login</h2>
-    <label class="fld"><span>User ID (UDISE)</span><input id="uid" name="username" inputmode="numeric" maxlength="11" placeholder="जैसे 09151714173" required></label>
-    <label class="fld"><span>Password</span><input id="pwd" name="password" type="password" required></label>
-    <button type="submit" class="go" id="go">Login</button>
-    <div class="msg" id="lmsg" role="status"></div>
-    <p class="star">* अभी केवल NIOS द्वारा verified (मान्यता प्राप्त) 213 centres ही login कर सकते हैं।</p>
-  </form>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" data-t="final" aria-selected="true"><b>Center</b><span>Verified 213 centres · <span id="n-final">…</span> छात्र</span></button>
+    <button type="button" role="tab" data-t="survey" aria-selected="false"><b>All Student</b><span>पूरा survey · <span id="n-survey">…</span> छात्र</span></button>
+    <button type="button" role="tab" data-t="code" aria-selected="false"><b>Centre Code</b><span>Login ID · NIOS AI Code</span></button>
+  </nav>
 
-  <div id="appView" hidden>
-    <div style="display:grid;gap:18px">
-      <section class="card">
-        <div>
-          <h2 id="cName"></h2>
-          <div class="sub" id="cSub"></div>
-        </div>
-        <div class="code"><span>NIOS AI Code</span><b id="cAi"></b></div>
-      </section>
+  <section class="steps" aria-label="चुनें">
+    <div class="step" id="st1"><div class="num">1</div><div class="step-b">
+      <div class="step-h"><h2>District चुनें</h2></div>
+      <select id="fDistrict" aria-label="District"></select>
+    </div></div>
+    <div class="step off" id="st2"><div class="num">2</div><div class="step-b">
+      <div class="step-h"><h2>Block चुनें</h2><span class="hint" id="bHint"></span><button type="button" class="lnk" id="bAll" hidden>सभी चुनें</button><button type="button" class="lnk" id="bNone" hidden>हटाएँ</button></div>
+      <div class="chips" id="blocks"></div>
+    </div></div>
+    <div class="step off" id="st3"><div class="num">3</div><div class="step-b">
+      <div class="step-h"><h2>Centre चुनें</h2><span class="hint" id="cHint"></span><button type="button" class="lnk" id="cAll" hidden>सभी चुनें</button><button type="button" class="lnk" id="cNone" hidden>हटाएँ</button></div>
+      <div id="schools"></div>
+    </div></div>
+  </section>
 
-      <nav class="tabs" role="tablist" id="tabs">
-        <button type="button" role="tab" data-k="final" aria-selected="true"><b>Center</b><span>Final mapping · <span id="nFinal">0</span> छात्र</span></button>
-        <button type="button" role="tab" data-k="survey" aria-selected="false"><b>All Student</b><span>पूरा survey · <span id="nSurvey">0</span> छात्र</span></button>
-      </nav>
-
-      <section class="bar">
-        <div class="stats" id="stats"></div>
-        <button type="button" class="dl" id="dl">Excel डाउनलोड करें</button>
-      </section>
-
-      <div class="tbl"><table id="tab"></table></div>
+  <section class="codes" id="codeView" hidden>
+    <div class="codes-h">
+      <input type="search" id="codeQ" placeholder="Centre का नाम, UDISE या AI Code लिखकर खोजें" aria-label="Centre खोजें">
+      <span class="msg" id="codeN"></span>
     </div>
+    <div class="tbl"><table id="codeTab"></table></div>
+    <div class="note">Login ID = centre का UDISE code। AI Code स्रोत: NIOS अधिसूचना 20/2026 दिनांक 07 अगस्त 2026, अनुबंध-I (213 अध्ययन केंद्र)। NIOS के साथ हर पत्राचार में AI Code लिखना ज़रूरी है।</div>
+  </section>
+
+  <div class="main" id="mainView">
+    <div class="list">
+      <section class="sec">
+        <div class="sec-h"><h2>Centre-wise संख्या</h2><span class="msg" id="cnote"></span></div>
+        <div class="tbl"><table id="ctab"><tbody><tr><td class="empty">डेटा लोड हो रहा है…</td></tr></tbody></table></div>
+      </section>
+      <section class="sec">
+        <div class="sec-h"><h2>छात्र सूची</h2><span class="msg" id="pnote"></span></div>
+        <div id="stabWrap"></div>
+      </section>
+    </div>
+
+    <aside class="rail" aria-label="Login और डाउनलोड">
+      <div><span class="lbl">चुने गए छात्र</span><div class="big" id="sN">–</div></div>
+      <div class="kv" id="sKv"></div>
+      <div class="scope" id="scope"></div>
+
+      <form class="login" id="loginForm" autocomplete="on">
+        <h3>Login</h3>
+        <label class="fld"><span>User ID</span><input id="uid" name="username" autocomplete="username" required></label>
+        <label class="fld"><span>Password</span><input id="pwd" name="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit" class="go" id="go">Login</button>
+        <div class="msg" id="lmsg" role="status"></div>
+        <p class="star">* अभी केवल NIOS द्वारा verified (मान्यता प्राप्त) 213 centres ही login कर सकते हैं।</p>
+      </form>
+
+      <div class="who" id="who" hidden>
+        <div id="whoText"></div>
+        <button type="button" class="out" id="logout">Logout</button>
+      </div>
+
+      <button type="button" class="dl" id="dlX" disabled>Excel डाउनलोड करें<small id="dlNote">छात्र सूची के लिए login करें</small></button>
+      <div class="msg" id="msg" role="status"></div>
+    </aside>
   </div>
 </div>
 
 <script>
-// Apps Script web app (map/apps_script/Code.gs) — returns only the logged-in centre's students.
+// Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
+// student rows come back only after login (a centre gets its own, admin gets all).
 const API_URL = 'https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
-const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","District Name","Block Name","Last School Name","Admission Basis"];
+const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
+const TAB = {final:"Center", survey:"All Student"};
 const $ = id => document.getElementById(id);
-const fmt = n => n.toLocaleString("en-IN");
+const fmt = n => Number(n).toLocaleString("en-IN");
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let S = null, cur = "final";
 
-async function login(udise, password){
-  const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({udise,password})});
+let S = null;            // summary: {centres:Map, final:{udise:[n,m]}, survey:{...}}
+let view = "final";      // final | survey | code
+let blocksSel = new Set(), centresSel = new Set();
+let session = null;      // {type:"centre"|"admin", u, p, centre?}
+const rowsData = {};     // key -> {headers, rows}
+
+async function api(body){
+  const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(body)});
   return res.json();
 }
 
-$("loginView").addEventListener("submit", async e => {
+async function loadSummary(){
+  const r = await (await fetch(API_URL+"?action=summary")).json();
+  if (!r.ok) throw new Error(r.error);
+  const centres = new Map(r.centres.map(c=>[c[0],{udise:c[0],name:c[1],district:c[2],block:c[3],gender:c[4],type:c[5],seats:c[6],ai:c[7]}]));
+  S = {centres, final:r.final, survey:r.survey};
+  const tot = k => Object.values(S[k]).reduce((a,x)=>a+x[0],0);
+  $("n-final").textContent = fmt(tot("final"));
+  $("n-survey").textContent = fmt(tot("survey"));
+}
+
+// centres that belong to the current tab
+function tabCentres(){
+  const all=[...S.centres.values()];
+  if (view==="survey") return all.filter(c=>S.survey[c.udise]);
+  return all.filter(c=>c.ai);
+}
+const count = (key,u) => S[key==="code"?"final":key][u] || [0,0];
+const inScope = c => (!$("fDistrict").value || c.district===$("fDistrict").value) && (!blocksSel.size || blocksSel.has(c.block));
+const picked = c => inScope(c) && (!centresSel.size || centresSel.has(c.udise));
+const dataKey = () => view==="survey" ? "survey" : "final";
+
+function fillDistricts(){
+  const keep=$("fDistrict").value, m=new Map();
+  tabCentres().forEach(c=>m.set(c.district,(m.get(c.district)||0)+count(dataKey(),c.udise)[0]));
+  const ds=[...m.keys()].filter(Boolean).sort();
+  $("fDistrict").innerHTML=`<option value="">— सभी Districts (${ds.length}) —</option>`+ds.map(d=>`<option value="${esc(d)}">${esc(d)}  (${fmt(m.get(d))} छात्र)</option>`).join("");
+  if (ds.includes(keep)) $("fDistrict").value=keep; else blocksSel.clear();
+}
+function fillBlocks(){
+  const d=$("fDistrict").value;
+  $("st2").classList.toggle("off",!d); $("bAll").hidden=$("bNone").hidden=!d;
+  if (!d){ blocksSel.clear(); $("blocks").innerHTML=`<div class="wait">पहले ऊपर District चुनें</div>`; return; }
+  const m=new Map();
+  tabCentres().filter(c=>c.district===d).forEach(c=>m.set(c.block,(m.get(c.block)||0)+count(dataKey(),c.udise)[0]));
+  blocksSel=new Set([...blocksSel].filter(b=>m.has(b)));
+  $("blocks").innerHTML=[...m.keys()].sort().map((b,i)=>`<label class="chk"><input type="checkbox" id="blk-${i}" value="${esc(b)}"${blocksSel.has(b)?" checked":""}>${esc(b)} <span class="c">${fmt(m.get(b))}</span></label>`).join("");
+}
+function fillSchools(){
+  const d=$("fDistrict").value;
+  $("st3").classList.toggle("off",!d); $("cAll").hidden=$("cNone").hidden=!d;
+  if (!d){ centresSel.clear(); $("schools").innerHTML=`<div class="wait">District और Block चुनने के बाद यहाँ centres दिखेंगे</div>`; return; }
+  const list=tabCentres().filter(inScope).sort((a,b)=>(a.block+a.name).localeCompare(b.block+b.name));
+  const ok=new Set(list.map(c=>c.udise)); centresSel=new Set([...centresSel].filter(k=>ok.has(k)));
+  $("schools").innerHTML=`<div class="schools">`+(list.length?list.map(c=>`<label><input type="checkbox" id="sc-${esc(c.udise)}" value="${esc(c.udise)}"${centresSel.has(c.udise)?" checked":""}><span class="nm">${esc(c.name)}<small>Block ${esc(c.block)} · UDISE ${esc(c.udise)}${c.ai?" · "+esc(c.ai):""}</small></span><span class="ct">${fmt(count(dataKey(),c.udise)[0])} छात्र</span></label>`).join(""):`<div class="empty">कोई centre नहीं मिला</div>`)+`</div>`;
+}
+function hints(){
+  $("bHint").textContent = blocksSel.size ? `${blocksSel.size} block चुने गए` : "एक, दो या सभी — कुछ न चुनें तो सभी blocks";
+  $("cHint").textContent = centresSel.size ? `${centresSel.size} centre चुने गए` : "एक या अधिक — कुछ न चुनें तो सभी centres";
+}
+function refill(){ fillDistricts(); fillBlocks(); fillSchools(); render(); }
+
+function render(){
+  hints();
+  $("codeView").hidden = view!=="code"; $("mainView").hidden = view==="code";
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===view));
+  if (view==="code") return renderCodes();
+  const key=dataKey(), rows=tabCentres().filter(picked).map(c=>{const [n,m]=count(key,c.udise); return {...c,n,m,f:n-m};})
+    .sort((a,b)=>(a.district+a.block+a.name).localeCompare(b.district+b.block+b.name));
+  const sum=k=>rows.reduce((a,c)=>a+c[k],0), seats=sum("seats");
+  $("sN").textContent=fmt(sum("n"));
+  $("sKv").innerHTML=[["Male",sum("m")],["Female",sum("f")],["Centres",rows.length],["कुल सीटें",seats]].map(([l,x])=>`<span>${l}</span><b>${fmt(x)}</b>`).join("");
+  $("scope").innerHTML=[["District",$("fDistrict").value||"सभी"],["Block",!$("fDistrict").value?"सभी":blocksSel.size?[...blocksSel].join(", "):"सभी"],
+    ["Centre",centresSel.size===1?S.centres.get([...centresSel][0]).name:centresSel.size?`${centresSel.size} centres`:"सभी"]].map(([k,x])=>`<div><span>${k}:</span> <strong>${esc(x)}</strong></div>`).join("");
+  const showDist=!$("fDistrict").value;
+  $("ctab").innerHTML=`<thead><tr><th class="n">#</th>${showDist?"<th>District</th>":""}<th>Block</th><th>Centre Name</th><th>UDISE</th><th>AI Code</th><th>Gender</th><th class="n">Seats</th><th class="n">छात्र</th><th class="n">Male</th><th class="n">Female</th><th class="n">Seats Left</th></tr></thead><tbody>`+
+    (rows.length?rows.map((c,i)=>`<tr><td class="n">${i+1}</td>${showDist?`<td>${esc(c.district)}</td>`:""}<td>${esc(c.block)}</td><td>${esc(c.name)}</td><td class="code">${esc(c.udise)}</td><td class="code">${esc(c.ai||"—")}</td><td>${esc(c.gender)}</td><td class="n">${fmt(c.seats)}</td><td class="n">${fmt(c.n)}</td><td class="n">${fmt(c.m)}</td><td class="n">${fmt(c.f)}</td><td class="n ${c.seats-c.n<0?"over":""}">${fmt(c.seats-c.n)}</td></tr>`).join(""):`<tr><td colspan="12" class="empty">कोई centre नहीं मिला</td></tr>`)+`</tbody>`+
+    (rows.length>1?`<tfoot><tr><td></td>${showDist?"<td></td>":""}<td colspan="5">कुल (${rows.length} centres)</td><td class="n">${fmt(seats)}</td><td class="n">${fmt(sum("n"))}</td><td class="n">${fmt(sum("m"))}</td><td class="n">${fmt(sum("f"))}</td><td class="n">${fmt(seats-sum("n"))}</td></tr></tfoot>`:"");
+  $("cnote").textContent=`${rows.length} centres`;
+  renderStudents();
+}
+
+// Student rows the viewer may see for the current tab and filters.
+function visibleRows(){
+  const d=rowsData[dataKey()]; if (!d) return null;
+  const h=d.headers, ui=h.indexOf("Centre UDISE Code");
+  const ok=new Set(tabCentres().filter(picked).map(c=>c.udise));
+  return {headers:h, rows:d.rows.filter(r=>ok.has(r[ui]))};
+}
+
+function renderStudents(){
+  const w=$("stabWrap"), dl=$("dlX");
+  if (!session){
+    w.innerHTML=`<div class="locked">छात्रों के नाम और मोबाइल वाली सूची देखने और Excel डाउनलोड करने के लिए दाईं ओर <b>Login</b> करें।<br>Login ID पता न हो तो <b>Centre Code</b> tab में अपना centre खोजें।</div>`;
+    $("pnote").textContent=""; dl.disabled=true; $("dlNote").textContent="छात्र सूची के लिए login करें"; return;
+  }
+  const v=visibleRows();
+  if (!v){ w.innerHTML=`<div class="locked">छात्र सूची लोड हो रही है…</div>`; dl.disabled=true; return; }
+  const cols=PREVIEW.map(x=>v.headers.indexOf(x)).filter(i=>i>=0), LIMIT=300;
+  w.innerHTML=`<div class="tbl"><table><thead><tr><th class="n">#</th>${cols.map(i=>`<th>${esc(v.headers[i])}</th>`).join("")}</tr></thead><tbody>`+
+    (v.rows.length?v.rows.slice(0,LIMIT).map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस चयन में कोई छात्र नहीं है</td></tr>`)+`</tbody></table></div>`;
+  $("pnote").textContent = v.rows.length>LIMIT ? `पहले ${LIMIT} छात्र दिख रहे हैं — पूरी सूची (${fmt(v.rows.length)}) Excel में मिलेगी` : `${fmt(v.rows.length)} छात्र`;
+  dl.disabled=!v.rows.length;
+  $("dlNote").textContent = session.type==="admin" ? `${fmt(v.rows.length)} छात्र · सभी कॉलम` : "आपके centre की पूरी सूची";
+}
+
+function renderCodes(){
+  const q=$("codeQ").value.trim().toUpperCase();
+  const list=[...S.centres.values()].filter(c=>c.ai&&inScope(c)&&(!centresSel.size||centresSel.has(c.udise))&&(!q||c.name.toUpperCase().includes(q)||c.udise.includes(q)||c.ai.includes(q)))
+    .sort((a,b)=>(a.district+a.block+a.name).localeCompare(b.district+b.block+b.name));
+  $("codeN").textContent=`${list.length} centres`;
+  $("codeTab").innerHTML=`<thead><tr><th>District</th><th>Block</th><th>Centre Name</th><th>Login ID (UDISE)</th><th>NIOS AI Code</th><th></th></tr></thead><tbody>`+
+    (list.length?list.map(c=>`<tr><td>${esc(c.district)}</td><td>${esc(c.block)}</td><td>${esc(c.name)}</td><td class="code">${esc(c.udise)}</td><td class="ai">${esc(c.ai)}</td><td><button type="button" class="cp" data-code="${esc(c.udise)}">Copy ID</button></td></tr>`).join(""):`<tr><td colspan="6" class="empty">कोई centre नहीं मिला</td></tr>`)+`</tbody>`;
+}
+
+// ---- login ----
+async function loadAdmin(key){
+  if (rowsData[key]) return;
+  $("msg").className="msg"; $("msg").textContent=`${TAB[key]} का पूरा डेटा लोड हो रहा है…`;
+  const r=await api({udise:"admin",password:session.p,key});
+  if (!r.ok) throw new Error(r.error);
+  rowsData[key]={headers:r.cols.map(c=>c.name), rows:Array.from({length:r.students},(_,i)=>r.cols.map(c=>c.dict[c.idx[i]]))};
+  $("msg").textContent="";
+}
+
+$("loginForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const u=$("uid").value.trim(), p=$("pwd").value.trim();
   $("go").disabled=true; $("lmsg").className="msg"; $("lmsg").textContent="जाँच हो रही है…";
   try{
-    const r = await login(u,p);
-    if (!r.ok){ $("lmsg").className="msg err"; $("lmsg").textContent=r.error||"Login नहीं हो सका।"; return; }
-    S = r; try{ sessionStorage.setItem("niosMap", JSON.stringify({u,p})); }catch(_){}
-    show();
+    if (u.toLowerCase()==="admin"){
+      const r=await api({udise:"admin",password:p});
+      if (!r.ok) throw new Error(r.error);
+      session={type:"admin",u:"admin",p};
+    } else {
+      const r=await api({udise:u,password:p});
+      if (!r.ok) throw new Error(r.error);
+      session={type:"centre",u,p,centre:r.centre};
+      rowsData.final=r.final; rowsData.survey=r.survey;
+      const c=S.centres.get(u);
+      if (c){ $("fDistrict").value=c.district; blocksSel=new Set([c.block]); centresSel=new Set([u]); }
+    }
+    try{ sessionStorage.setItem("niosMap",JSON.stringify({u,p})); }catch(_){}
+    $("lmsg").textContent=""; showSession(); refill();
+    if (session.type==="admin" && view!=="code"){ await loadAdmin(dataKey()); render(); }
   }catch(err){
-    $("lmsg").className="msg err"; $("lmsg").textContent="Server से जुड़ नहीं पाए। Internet जाँचें और फिर कोशिश करें।";
+    $("lmsg").className="msg err"; $("lmsg").textContent=err.message&&!/fetch/i.test(err.message)?err.message:"Server से जुड़ नहीं पाए, फिर कोशिश करें।";
+    session=null;
   }finally{ $("go").disabled=false; }
 });
 
-$("logout").addEventListener("click", () => {
-  S=null; try{ sessionStorage.removeItem("niosMap"); }catch(_){}
-  $("pwd").value=""; $("lmsg").textContent="";
-  $("appView").hidden=true; $("logout").hidden=true; $("loginView").hidden=false;
+function showSession(){
+  $("loginForm").hidden=!!session; $("who").hidden=!session;
+  if (!session) return;
+  $("whoText").innerHTML = session.type==="admin" ? `Login: <b>Admin</b> — सभी centres का डेटा`
+    : `Login: <b>${esc(session.u)}</b><br>${esc(session.centre["Centre Name"])} · AI Code <b>${esc(session.centre["AI Code"]||"—")}</b>`;
+}
+
+$("logout").addEventListener("click",()=>{
+  session=null; for (const k in rowsData) delete rowsData[k];
+  try{ sessionStorage.removeItem("niosMap"); }catch(_){}
+  $("pwd").value=""; showSession(); render();
 });
 
-$("tabs").addEventListener("click", e => { const b=e.target.closest("button"); if(b){ cur=b.dataset.k; render(); } });
-$("dl").addEventListener("click", download);
-
-function show(){
-  const c=S.centre;
-  $("cName").textContent=c["Centre Name"];
-  $("cSub").textContent=`UDISE ${c.UDISE} · Block ${c.Block} · District ${c.District} · ${c.Gender} · ${c.Seats} seats`;
-  $("cAi").textContent=c["AI Code"]||"—";
-  $("nFinal").textContent=fmt(S.final.rows.length);
-  $("nSurvey").textContent=fmt(S.survey.rows.length);
-  cur = S.final.rows.length || !S.survey.rows.length ? "final" : "survey";
-  $("loginView").hidden=true; $("appView").hidden=false; $("logout").hidden=false;
-  render();
-}
-
-function render(){
-  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.k===cur));
-  const d=S[cur], h=d.headers, sx=h.indexOf("Sex");
-  const male=d.rows.filter(r=>r[sx]==="MALE").length;
-  $("stats").innerHTML=[["कुल छात्र",d.rows.length],["Male",male],["Female",d.rows.length-male]].map(([l,x])=>`<div><span>${l}</span><b>${fmt(x)}</b></div>`).join("");
-  $("dl").disabled=!d.rows.length;
-  const cols=PREVIEW.map(x=>h.indexOf(x)).filter(i=>i>=0);
-  $("tab").innerHTML=`<thead><tr><th class="n">#</th>${cols.map(i=>`<th>${esc(h[i])}</th>`).join("")}</tr></thead><tbody>`+
-    (d.rows.length?d.rows.map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस सूची में इस centre का कोई छात्र नहीं है</td></tr>`)+`</tbody>`;
-}
-
-function download(){
-  const d=S[cur], c=S.centre;
-  const num=new Set(["Eligible Class to Import","Centre Seats"].map(x=>d.headers.indexOf(x)));
-  const data=[["Students with Recommended NIOS Centre for Admission"], d.headers,
-    ...d.rows.map(r=>r.map((x,i)=>num.has(i)&&x!==""&&!isNaN(x)?+x:x))];
+// ---- download ----
+$("dlX").addEventListener("click",()=>{
+  const v=visibleRows(); if (!v||!v.rows.length) return;
+  const num=new Set(["Eligible Class to Import","Centre Seats"].map(x=>v.headers.indexOf(x)));
+  const data=[["Students with Recommended NIOS Centre for Admission"],v.headers,...v.rows.map(r=>r.map((x,i)=>num.has(i)&&x!==""&&!isNaN(x)?+x:x))];
   const ws=XLSX.utils.aoa_to_sheet(data);
-  ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:d.headers.length-1}}];
-  ws["!cols"]=d.headers.map(x=>({wch:Math.min(40,Math.max(10,x.length+2))}));
-  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:1,c:0},e:{r:data.length-1,c:d.headers.length-1}})};
+  ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:v.headers.length-1}}];
+  ws["!cols"]=v.headers.map(h=>({wch:Math.min(40,Math.max(10,h.length+2))}));
+  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:1,c:0},e:{r:data.length-1,c:v.headers.length-1}})};
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"MAP Data");
-  const name=`NIOS_${cur==="final"?"Center":"AllStudent"}_${c["Centre Name"]}_${c.UDISE}`.replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim();
-  XLSX.writeFile(wb, name+".xlsx");
-}
+  const parts=[TAB[dataKey()].replace(" ","")];
+  if ($("fDistrict").value) parts.push($("fDistrict").value);
+  if (blocksSel.size) parts.push(blocksSel.size<=3?[...blocksSel].join("-"):`${blocksSel.size} Blocks`);
+  if (centresSel.size) parts.push(centresSel.size===1?(()=>{const c=S.centres.get([...centresSel][0]);return c.name+" "+c.udise})():`${centresSel.size} Centres`);
+  XLSX.writeFile(wb,("NIOS_"+parts.join("_")).replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim().slice(0,150)+".xlsx");
+  $("msg").className="msg ok"; $("msg").textContent=`Excel बन गई: ${fmt(v.rows.length)} छात्र।`;
+});
 
-// restore session after a page refresh
-try{
-  const s=JSON.parse(sessionStorage.getItem("niosMap")||"null");
-  if (s){ $("uid").value=s.u; $("pwd").value=s.p; $("loginView").requestSubmit(); }
-}catch(_){}
+// ---- events ----
+$("tabs").addEventListener("click",async e=>{
+  const b=e.target.closest("button"); if(!b||b.dataset.t===view) return;
+  view=b.dataset.t; refill();
+  if (session&&session.type==="admin"&&view!=="code"){ try{ await loadAdmin(dataKey()); render(); }catch(err){ $("msg").className="msg err"; $("msg").textContent=err.message; } }
+});
+$("fDistrict").addEventListener("change",()=>{blocksSel.clear(); centresSel.clear(); fillBlocks(); fillSchools(); render();});
+$("blocks").addEventListener("change",e=>{ e.target.checked?blocksSel.add(e.target.value):blocksSel.delete(e.target.value); fillSchools(); render(); });
+$("bAll").addEventListener("click",()=>{ $("blocks").querySelectorAll("input").forEach(i=>{i.checked=true; blocksSel.add(i.value);}); fillSchools(); render(); });
+$("bNone").addEventListener("click",()=>{ blocksSel.clear(); fillBlocks(); fillSchools(); render(); });
+$("schools").addEventListener("change",e=>{ e.target.checked?centresSel.add(e.target.value):centresSel.delete(e.target.value); render(); });
+$("cAll").addEventListener("click",()=>{ $("schools").querySelectorAll("input").forEach(i=>{i.checked=true; centresSel.add(i.value);}); render(); });
+$("cNone").addEventListener("click",()=>{ centresSel.clear(); fillSchools(); render(); });
+let tq; $("codeQ").addEventListener("input",()=>{clearTimeout(tq); tq=setTimeout(renderCodes,200);});
+$("codeTab").addEventListener("click",e=>{
+  const b=e.target.closest("button.cp"); if(!b) return;
+  const done=()=>{b.textContent="Copied"; b.classList.add("done"); setTimeout(()=>{b.textContent="Copy ID"; b.classList.remove("done");},1500);};
+  navigator.clipboard?.writeText(b.dataset.code).then(done,()=>{});
+});
+
+(async()=>{
+  try{ await loadSummary(); }catch(e){ $("meta").textContent="डेटा लोड नहीं हुआ — पेज reload करें"; return; }
+  $("meta").innerHTML=`${fmt(S.centres.size)} centres · 213 verified`;
+  refill();
+  try{
+    const s=JSON.parse(sessionStorage.getItem("niosMap")||"null");
+    if (s){ $("uid").value=s.u; $("pwd").value=s.p; $("loginForm").requestSubmit(); }
+  }catch(_){}
+})();
 </script>
 </body>
 </html>

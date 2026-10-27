@@ -76,8 +76,53 @@ function authorize() {
   Logger.log(SpreadsheetApp.openById(SHEET_ID).getName());
 }
 
-function doGet() {
-  return json_({ ok: true, service: 'nios-centre-map' });
+// GET ?action=summary — public, no student-level data: the centre list (with
+// AI codes) and per-centre counts for the Centre-wise table and Centre Code tab.
+function doGet(e) {
+  try {
+    if (e && e.parameter && e.parameter.action === 'summary') return json_(summary_());
+    return json_({ ok: true, service: 'nios-centre-map' });
+  } catch (err) {
+    return json_({ ok: false, error: 'Server error: ' + err.message });
+  }
+}
+
+function summary_() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  // [udise, name, district, block, gender, type, seats, aiCode]
+  const centres = cached_('sum:centres', function () {
+    const sh = ss.getSheetByName(CENTRES_TAB);
+    const h = headerRow_(sh, 'Centre UDISE');
+    const values = sh.getRange(h.row + 1, 1, sh.getLastRow() - h.row, h.headers.length).getDisplayValues();
+    const col = name => h.headers.indexOf(name);
+    return values.filter(r => r[col('Centre UDISE')]).map(function (r) {
+      const u = code_(r[col('Centre UDISE')]);
+      return [u, r[col('Centre Name')], r[col('District')], r[col('Block')], r[col('Gender')],
+              r[col('Type')], Number(r[col('Seats')]) || 0, AI_CODES[u] || ''];
+    });
+  });
+  const out = { ok: true, centres: centres };
+  Object.keys(DATA_TABS).forEach(function (key) {
+    // { udise: [students, male] }
+    out[key] = cached_('sum:' + key, function () {
+      const sh = ss.getSheetByName(DATA_TABS[key]);
+      const h = sh && headerRow_(sh, UDISE_COL);
+      const counts = {};
+      if (!h || sh.getLastRow() <= h.row) return counts;
+      const n = sh.getLastRow() - h.row;
+      const codes = sh.getRange(h.row + 1, h.headers.indexOf(UDISE_COL) + 1, n, 1).getValues();
+      const sex = sh.getRange(h.row + 1, h.headers.indexOf('Sex') + 1, n, 1).getValues();
+      codes.forEach(function (c, i) {
+        const u = code_(c[0]);
+        if (!u) return;
+        const e = counts[u] || (counts[u] = [0, 0]);
+        e[0]++;
+        if (String(sex[i][0]).toUpperCase() === 'MALE') e[1]++;
+      });
+      return counts;
+    });
+  });
+  return out;
 }
 
 function doPost(e) {
@@ -86,6 +131,7 @@ function doPost(e) {
     const udise = String(body.udise || '').trim();
     const password = String(body.password || '').trim();
     if (!udise || !password) return json_({ ok: false, error: 'User ID और Password दोनों भरें।' });
+    if (udise.toLowerCase() === 'admin') return json_(admin_(password, body.key));
 
     if (password !== udise) return json_({ ok: false, error: 'User ID या Password गलत है।' });
     // Only the 213 NIOS-verified centres (Annexure-I) can log in for now.
@@ -105,6 +151,31 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: 'Server error: ' + err.message });
   }
+}
+
+// Admin sees every student of one data tab. The password lives in Script
+// Properties (ADMIN_PASSWORD), never in this file — the repo is public.
+// Columns are dictionary-encoded ({dict, idx}) to keep the 36k-row reply small.
+function admin_(password, key) {
+  const expected = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+  if (!expected || password !== expected) return { ok: false, error: 'User ID या Password गलत है।' };
+  if (!DATA_TABS[key]) return { ok: true, admin: true };
+  const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(DATA_TABS[key]);
+  const h = headerRow_(sh, UDISE_COL);
+  const headers = h.headers.filter(String);
+  const n = sh.getLastRow() - h.row;
+  const values = n > 0 ? sh.getRange(h.row + 1, 1, n, headers.length).getDisplayValues() : [];
+  const cols = headers.map(function (name, c) {
+    const lookup = {}, dict = [], idx = new Array(values.length);
+    for (let r = 0; r < values.length; r++) {
+      const v = name === UDISE_COL ? code_(values[r][c]) : values[r][c];
+      let i = lookup[v];
+      if (i === undefined) { i = lookup[v] = dict.length; dict.push(v); }
+      idx[r] = i;
+    }
+    return { name: name, dict: dict, idx: idx };
+  });
+  return { ok: true, admin: true, key: key, students: values.length, cols: cols };
 }
 
 // Lookups (which rows belong to which centre) are cached for 30 minutes so a
