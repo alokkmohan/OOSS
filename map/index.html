@@ -78,13 +78,14 @@ label.chk .c{font-family:var(--f-data);font-size:.8rem;opacity:.8}
 .star{font-size:.82rem;color:var(--warn);margin:0}
 .who{display:grid;gap:4px;border-top:1px solid var(--rule);padding-top:12px;font-size:.92rem}
 .who b{font-family:var(--f-data);color:var(--teal)}
-.out{background:none;border:1.5px solid var(--ink);color:var(--ink);border-radius:8px;padding:5px 12px;font-weight:600;justify-self:start}
+.logoutbtn{background:none;border:1.5px solid var(--ink);color:var(--ink);border-radius:8px;padding:5px 12px;font-weight:600;justify-self:start}
 .dl{font-weight:700;border:0;border-radius:10px;padding:14px 16px;font-size:1.1rem;background:var(--accent);color:var(--accent-ink);width:100%}
 .dl small{display:block;font-weight:500;font-size:.8rem;opacity:.85}
 .dl:disabled{opacity:.45;cursor:not-allowed}
 .msg{font-size:.9rem;color:var(--muted)} .msg.err{color:var(--warn);font-weight:600} .msg.ok{color:var(--ok)}
 .list{display:grid;gap:22px;min-width:0}
 .sec{display:grid;gap:8px;min-width:0}
+.sec>*{min-width:0}
 .sec-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
 .sec-h h2{font-family:var(--f-display);font-weight:700;font-size:1.2rem;margin:0}
 .tbl{overflow:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);max-height:460px}
@@ -104,17 +105,18 @@ tfoot td{font-weight:700;background:var(--field);position:sticky;bottom:0}
 .note{font-size:.9rem;color:var(--muted);background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:12px 14px}
 .cp{font-size:.82rem;border:1.5px solid var(--teal);background:transparent;color:var(--teal);border-radius:6px;padding:3px 10px}
 .cp.done{background:var(--teal);color:var(--on-teal)}
-/* what each viewer sees: out = login + Login ID lookup; centre = own students; admin = everything */
-body.out #tabs, body.out #mainView{display:none!important}
-body.centre #steps, body.centre #codeView, body.centre #cwSec, body.centre #tab-code, body.centre #scope{display:none!important}
-body:not(.out) #loginView, body:not(.out) #lookupHead{display:none!important}
-body:not(.centre) #centreCard{display:none!important}
+/* what each viewer sees: out = login box only; centre = own students; admin = everything */
+body.is-out #tabs, body.is-out #mainView{display:none!important}
+body.is-centre #steps, body.is-centre #codeView, body.is-centre #cwSec, body.is-centre #tab-code, body.is-centre #scope{display:none!important}
+body:not(.is-out) #loginView{display:none!important}
+/* home page = login only */
+body.is-out #steps, body.is-out #codeView, body.is-out #meta{display:none!important}
+body.is-out header{justify-content:center;text-align:center}
+body:not(.is-centre) #centreCard{display:none!important}
 .loginbox{max-width:440px;width:100%;margin:2vh auto 0;background:var(--sheet);border:2px solid var(--ink);border-radius:14px;padding:26px;display:grid;gap:14px}
 .loginbox h2{font-family:var(--f-display);font-size:1.45rem;margin:0}
 .loginbox .fld input{font-size:1.05rem;padding:11px 12px}
 .loginbox .go{padding:13px;font-size:1.05rem;border-radius:10px}
-.lookup-h{display:grid;gap:2px;margin-top:8px}
-.lookup-h h2{font-family:var(--f-display);font-size:1.25rem;margin:0}
 .card{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
 @media (max-width:640px){.card{grid-template-columns:1fr}}
 .card h2{font-family:var(--f-display);font-size:1.35rem;margin:0;line-height:1.2}
@@ -126,7 +128,7 @@ footer{border-top:1px solid var(--rule);padding-top:12px;display:flex;flex-wrap:
 footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 </style>
 </head>
-<body class="out">
+<body class="is-out">
 <div class="wrap">
   <header>
     <h1>NIOS छात्र सूची<small>Out of School students · NIOS Centre Mapping · Uttar Pradesh</small></h1>
@@ -142,14 +144,9 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
     <p class="star">* अभी केवल NIOS द्वारा verified (मान्यता प्राप्त) 213 centres ही login कर सकते हैं।</p>
   </form>
 
-  <div class="lookup-h" id="lookupHead">
-    <h2>Login ID भूल गए?</h2>
-    <span class="hint">नीचे अपना District, Block और Centre चुनें — Login ID (UDISE) और NIOS AI Code दिख जाएगा।</span>
-  </div>
-
   <nav class="tabs" role="tablist" id="tabs">
-    <button type="button" role="tab" data-t="final" aria-selected="true"><b>Center</b><span>Verified 213 centres · <span id="n-final">…</span> छात्र</span></button>
-    <button type="button" role="tab" data-t="survey" aria-selected="false"><b>All Student</b><span>पूरा survey · <span id="n-survey">…</span> छात्र</span></button>
+    <button type="button" role="tab" data-t="final" aria-selected="true"><b>Center</b><span><span id="l-final">Verified 213 centres</span> · <span id="n-final">…</span> छात्र</span></button>
+    <button type="button" role="tab" data-t="survey" aria-selected="false"><b>All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
     <button type="button" role="tab" id="tab-code" data-t="code" aria-selected="false"><b>Centre Code</b><span>Login ID · NIOS AI Code</span></button>
   </nav>
 
@@ -201,7 +198,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 
       <div class="who" id="who" hidden>
         <div id="whoText"></div>
-        <button type="button" class="out" id="logout">Logout</button>
+        <button type="button" class="logoutbtn" id="logout">Logout</button>
       </div>
 
       <button type="button" class="dl" id="dlX" disabled>Excel डाउनलोड करें<small id="dlNote">छात्र सूची के लिए login करें</small></button>
@@ -218,7 +215,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
 // student rows come back only after login (a centre gets its own, admin gets all).
-const APP_VERSION = '1.3';  // shown in the footer; bump on every release
+const APP_VERSION = '1.4';  // shown in the footer; bump on every release
 const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
 const TAB = {final:"Center", survey:"All Student"};
@@ -227,7 +224,7 @@ const fmt = n => Number(n).toLocaleString("en-IN");
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 let S = null;            // summary: {centres:Map, final:{udise:[n,m]}, survey:{...}}
-let view = "code";       // final | survey | code (logged-out viewers only get the Login ID lookup)
+let view = "code";       // final | survey | code (Centre Code tab is admin-only)
 let blocksSel = new Set(), centresSel = new Set();
 let session = null;      // {type:"centre"|"admin", u, p, centre?}
 const rowsData = {};     // key -> {headers, rows}
@@ -243,8 +240,17 @@ async function loadSummary(){
   const centres = new Map(r.centres.map(c=>[c[0],{udise:c[0],name:c[1],district:c[2],block:c[3],gender:c[4],type:c[5],seats:c[6],ai:c[7]}]));
   S = {centres, final:r.final, survey:r.survey};
   const tot = k => Object.values(S[k]).reduce((a,x)=>a+x[0],0);
-  $("n-final").textContent = fmt(tot("final"));
-  $("n-survey").textContent = fmt(tot("survey"));
+  S.tot = {final:tot("final"), survey:tot("survey")};
+  tabLabels();
+}
+
+// Tab subtitles: a centre sees its own counts, admin sees the totals.
+function tabLabels(){
+  const own = session && session.type==="centre";
+  $("l-final").textContent = own ? "आपके centre के" : "Verified 213 centres";
+  $("l-survey").textContent = own ? "पूरे survey में आपके" : "पूरा survey";
+  $("n-final").textContent = fmt(own ? rowsData.final.rows.length : S.tot.final);
+  $("n-survey").textContent = fmt(own ? rowsData.survey.rows.length : S.tot.survey);
 }
 
 // centres that belong to the current tab
@@ -323,7 +329,7 @@ function renderStudents(){
     $("pnote").textContent=""; dl.disabled=true; $("dlNote").textContent="छात्र सूची के लिए login करें"; return;
   }
   const v=visibleRows();
-  if (!v){ w.innerHTML=`<div class="locked">छात्र सूची लोड हो रही है…</div>`; dl.disabled=true; return; }
+  if (!v){ w.innerHTML=`<div class="locked">छात्र सूची लोड हो रही है…</div>`; $("pnote").textContent=""; $("sN").textContent="…"; dl.disabled=true; return; }
   const cols=PREVIEW.map(x=>v.headers.indexOf(x)).filter(i=>i>=0), LIMIT=300;
   w.innerHTML=`<div class="tbl"><table><thead><tr><th class="n">#</th>${cols.map(i=>`<th>${esc(v.headers[i])}</th>`).join("")}</tr></thead><tbody>`+
     (v.rows.length?v.rows.slice(0,LIMIT).map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस चयन में कोई छात्र नहीं है</td></tr>`)+`</tbody></table></div>`;
@@ -379,7 +385,8 @@ $("loginView").addEventListener("submit", async e=>{
 });
 
 function showSession(){
-  document.body.className = session ? session.type : "out";
+  document.body.className = "is-" + (session ? session.type : "out");
+  if (S) tabLabels();
   $("who").hidden=!session;
   if (!session) return;
   if (session.type==="centre"){
@@ -395,7 +402,7 @@ function showSession(){
 $("logout").addEventListener("click",()=>{
   session=null; for (const k in rowsData) delete rowsData[k];
   try{ sessionStorage.removeItem("niosMap"); }catch(_){}
-  $("pwd").value=""; view="code"; $("fDistrict").value=""; blocksSel.clear(); centresSel.clear();
+  $("uid").value=""; $("pwd").value=""; view="code"; $("fDistrict").value=""; blocksSel.clear(); centresSel.clear();
   $("codeQ").value=""; $("msg").textContent=""; showSession(); refill();
 });
 
