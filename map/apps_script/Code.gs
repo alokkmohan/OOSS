@@ -150,12 +150,14 @@ function summary_() {
 function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    const udise = String(body.udise || '').trim();
+    const raw = String(body.udise || '').trim();
     const password = String(body.password || '').trim();
-    if (!udise || !password) return json_({ ok: false, error: 'User ID और Password दोनों भरें।' });
-    if (udise.toLowerCase() === 'admin') return json_(admin_(password, body.key, body));
+    if (!raw || !password) return json_({ ok: false, error: 'User ID और Password दोनों भरें।' });
+    if (raw.toLowerCase() === 'admin') return json_(admin_(password, body.key, body));
 
-    if (password !== udise) return json_({ ok: false, error: 'User ID या Password गलत है।' });
+    // a UDISE typed without its leading 0 (10 digits) is accepted too, in either field
+    const udise = code_(raw.replace(/\s/g, ''));
+    if (code_(password.replace(/\s/g, '')) !== udise) return json_({ ok: false, error: 'User ID या Password गलत है।' });
     const ai = aiCodes_();
     const ss = SpreadsheetApp.openById(SHEET_ID);
     if (body.action === 'nios') return json_(niosFor_(ss, [udise], 'survey', CENTRE_SEES_AADHAAR));

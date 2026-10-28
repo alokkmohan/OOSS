@@ -213,7 +213,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
 // student rows come back only after login (a centre gets its own, admin gets all).
-const APP_VERSION = '1.5';  // shown in the footer; bump on every release
+const APP_VERSION = '1.6';  // shown in the footer; bump on every release
 const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
 const TAB = {survey:"All Student"};
@@ -360,10 +360,11 @@ $("loginView").addEventListener("submit", async e=>{
     } else {
       const r=await api({udise:u,password:p});
       if (!r.ok) throw new Error(r.error);
-      session={type:"centre",u,p,centre:r.centre};
+      const id=r.centre.UDISE;  // server's 11-digit form, even if typed without the leading 0
+      session={type:"centre",u:id,p,centre:r.centre};
       rowsData.survey=r.survey;
-      const c=S.centres.get(u);
-      if (c){ $("fDistrict").value=c.district; blocksSel=new Set([c.block]); centresSel=new Set([u]); }
+      const c=S.centres.get(id);
+      if (c){ $("fDistrict").value=c.district; blocksSel=new Set([c.block]); centresSel=new Set([id]); }
     }
     try{ sessionStorage.setItem("niosMap",JSON.stringify({u,p})); }catch(_){}
     if (session.type==="admin"){ $("fDistrict").value=""; blocksSel.clear(); centresSel.clear(); }
