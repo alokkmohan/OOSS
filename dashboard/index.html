@@ -101,6 +101,246 @@
     }
     .school-table td { padding: 8px 14px 8px 36px; font-size: 0.82rem; border-bottom: 1px solid rgba(15,23,42,0.04); }
     .school-table tr:last-child td { border-bottom: none; }
+  
+    /* --- Detailed Reason Report Section Styles --- */
+    .report-wrapper {
+      background: #ffffff;
+      border: 1px solid var(--bg-card-border);
+      border-radius: 14px;
+      padding: 30px;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.06);
+      margin-bottom: 28px;
+    }
+    .report-main-header {
+      margin-bottom: 22px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--bg-card-border);
+    }
+    .report-main-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+    }
+    .report-main-meta {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+    .report-summary-card {
+      background: #f8fafc;
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin-bottom: 28px;
+    }
+    .report-summary-heading {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+    .report-summary-p {
+      font-size: 0.94rem;
+      line-height: 1.6;
+      color: #334155;
+      margin-bottom: 12px;
+    }
+    .report-summary-bullets {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.88rem;
+      color: #334155;
+    }
+    .report-summary-bullets li {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .report-summary-bullets li::before {
+      content: '•';
+      color: var(--accent-blue);
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .report-chart-section {
+      margin-bottom: 32px;
+    }
+    .report-chart-head {
+      font-size: 1.22rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .report-chart-insight {
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: #1d4ed8;
+      margin-bottom: 22px;
+    }
+
+    .reason-bars-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .rbar-row {
+      display: grid;
+      grid-template-columns: 230px 1fr 140px;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.88rem;
+    }
+    @media (max-width: 768px) {
+      .rbar-row {
+        grid-template-columns: 180px 1fr 110px;
+        gap: 8px;
+        font-size: 0.78rem;
+      }
+    }
+    .rbar-label {
+      text-align: right;
+      font-weight: 500;
+      color: #334155;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+      height: 24px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+    .rbar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .rbar-fill.r-blue { background: #2563eb; }
+    .rbar-fill.r-gray { background: #94a3b8; }
+    .rbar-fill.r-light-gray { background: #cbd5e1; }
+    .rbar-val {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 0.86rem;
+      white-space: nowrap;
+    }
+
+    .econ-bracket-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 125px;
+      align-items: center;
+      gap: 10px;
+    }
+    .econ-rows-cluster {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .econ-bracket-side {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .econ-bracket-svg {
+      height: 96px;
+      width: 16px;
+      flex-shrink: 0;
+    }
+    .econ-bracket-label {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #1d4ed8;
+      line-height: 1.25;
+    }
+
+    .rbar-subgroup-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #64748b;
+      margin: 18px 0 8px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--bg-card-border);
+    }
+
+    .report-other-note {
+      font-size: 0.85rem;
+      color: #475569;
+      background: #f8fafc;
+      padding: 12px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--bg-card-border);
+      margin-top: 16px;
+      line-height: 1.55;
+    }
+
+    .report-gender-section {
+      margin-top: 32px;
+      padding-top: 22px;
+      border-top: 1px solid var(--bg-card-border);
+    }
+    .gender-sec-head {
+      font-size: 1.18rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .gender-sec-insight {
+      font-size: 0.92rem;
+      color: #166534;
+      background: #f0fdf4;
+      border-left: 4px solid #16a34a;
+      padding: 11px 16px;
+      border-radius: 6px;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .gender-summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--bg-card-border);
+    }
+    .gender-summary-table th {
+      background: #f8fafc;
+      padding: 11px 16px;
+      font-weight: 700;
+      color: #1e293b;
+      border: 1px solid var(--bg-card-border);
+      text-align: left;
+    }
+    .gender-summary-table td {
+      padding: 11px 16px;
+      border: 1px solid var(--bg-card-border);
+      color: #334155;
+    }
+    .gender-summary-table tr:hover td {
+      background: #f8fafc;
+    }
+
+    .report-footer-src {
+      margin-top: 26px;
+      padding-top: 14px;
+      border-top: 1px solid var(--bg-card-border);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
   </style>
 </head>
 <body>
@@ -154,9 +394,170 @@
       <div class="chart-title">Mode: Regular vs NIOS (Willing)</div>
       <div class="chart-container"><canvas id="chartMode"></canvas></div>
     </div>
-    <div class="chart-card col-12">
-      <div class="chart-title">Reason for Not Studying</div>
-      <div class="chart-container chart-container-tall"><canvas id="chartReason"></canvas></div>
+    <div class="chart-card col-12" style="padding: 0; background: transparent; border: none; box-shadow: none;">
+      <div class="report-wrapper">
+        <div class="report-main-header">
+          <div class="report-main-title">Out of school - सर्वे रिपोर्ट</div>
+          <div class="report-main-meta">30 अक्टूबर 2026 | स्रोत: Field Data Collection (Survey)</div>
+        </div>
+
+        <div class="report-summary-card">
+          <div class="report-summary-heading">सारांश</div>
+          <div class="report-summary-p">
+            सर्वे में पढ़ाई न कर रहे <strong>37,423</strong> बच्चों में से केवल <strong>1,566 (4.2%)</strong> दोबारा पढ़ना चाहते हैं। पढ़ाई छूटने की सबसे बड़ी वजह <strong>आर्थिक दबाव</strong> है: पैसों की कमी, मज़दूरी के लिए पलायन और घर की ज़िम्मेदारी मिलाकर <strong>37%</strong>। इसके बाद पढ़ाई में रुचि न होना <strong>29%</strong> है, और <strong>12%</strong> बच्चों का कारण स्पष्ट नहीं है।
+          </div>
+          <ul class="report-summary-bullets">
+            <li><span><strong>सर्वे:</strong> 46,428 बच्चे; पढ़ रहे 8,855 (19%); नहीं पढ़ रहे 37,423; मृत्यु 150</span></li>
+            <li><span><strong>कक्षा:</strong> नहीं पढ़ रहे बच्चों में आधे (19,171) कक्षा 10 के हैं; कक्षा 9 के 9,318 और कक्षा 11 के 8,934</span></li>
+            <li><span><strong>दोबारा पढ़ने के इच्छुक:</strong> 1,566 (4.2%)</span></li>
+          </ul>
+        </div>
+
+        <div class="report-chart-section">
+          <div class="report-chart-head">पढ़ाई छोड़ने के कारण</div>
+          <div class="report-chart-insight">हर तीन में से एक से ज़्यादा बच्चा आर्थिक कारणों से पढ़ाई से बाहर</div>
+
+          <div class="reason-bars-box">
+            <!-- 1. Not Interested -->
+            <div class="rbar-row">
+              <div class="rbar-label">पढ़ाई में रुचि नहीं</div>
+              <div class="rbar-track"><div class="rbar-fill r-gray" style="width: 100%;"></div></div>
+              <div class="rbar-val">10,329 • 28.8%</div>
+            </div>
+
+            <!-- Economic Group with Curly Bracket -->
+            <div class="econ-bracket-wrapper">
+              <div class="econ-rows-cluster">
+                <div class="rbar-row" style="grid-template-columns: 230px 1fr 140px;">
+                  <div class="rbar-label">मज़दूरी / काम के लिए पलायन</div>
+                  <div class="rbar-track"><div class="rbar-fill r-blue" style="width: 48.3%;"></div></div>
+                  <div class="rbar-val">4,986 • 13.9%</div>
+                </div>
+                <div class="rbar-row" style="grid-template-columns: 230px 1fr 140px;">
+                  <div class="rbar-label">आर्थिक समस्या</div>
+                  <div class="rbar-track"><div class="rbar-fill r-blue" style="width: 42.8%;"></div></div>
+                  <div class="rbar-val">4,421 • 12.3%</div>
+                </div>
+                <div class="rbar-row" style="grid-template-columns: 230px 1fr 140px;">
+                  <div class="rbar-label">घरेलू / पारिवारिक ज़िम्मेदारी</div>
+                  <div class="rbar-track"><div class="rbar-fill r-blue" style="width: 37.2%;"></div></div>
+                  <div class="rbar-val">3,845 • 10.7%</div>
+                </div>
+              </div>
+              <div class="econ-bracket-side">
+                <svg class="econ-bracket-svg" viewBox="0 0 16 96" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round">
+                  <path d="M 4 2 Q 11 2 11 24 Q 11 48 15 48 Q 11 48 11 72 Q 11 94 4 94"/>
+                </svg>
+                <div class="econ-bracket-label">आर्थिक कुल<br><strong style="font-size:1.1rem; color:#1d4ed8;">36.9%</strong></div>
+              </div>
+            </div>
+
+            <!-- 5. Admission Not Taken / TC Issue -->
+            <div class="rbar-row">
+              <div class="rbar-label">प्रवेश नहीं लिया / TC</div>
+              <div class="rbar-track"><div class="rbar-fill r-gray" style="width: 42.4%;"></div></div>
+              <div class="rbar-val">4,372 • 12.2%</div>
+            </div>
+
+            <!-- 6. Marriage -->
+            <div class="rbar-row">
+              <div class="rbar-label">विवाह</div>
+              <div class="rbar-track"><div class="rbar-fill r-gray" style="width: 18.4%;"></div></div>
+              <div class="rbar-val">1,901 • 5.3%</div>
+            </div>
+
+            <!-- 7. Health / Medical -->
+            <div class="rbar-row">
+              <div class="rbar-label">बीमारी</div>
+              <div class="rbar-track"><div class="rbar-fill r-gray" style="width: 4.9%;"></div></div>
+              <div class="rbar-val">511 • 1.4%</div>
+            </div>
+
+            <!-- 8. Parents Wish -->
+            <div class="rbar-row">
+              <div class="rbar-label">अभिभावक की इच्छा</div>
+              <div class="rbar-track"><div class="rbar-fill r-gray" style="width: 1.6%;"></div></div>
+              <div class="rbar-val">160 • 0.4%</div>
+            </div>
+
+            <!-- 9. Fail / Dropped / School far -->
+            <div class="rbar-row">
+              <div class="rbar-label">fail / नाम कटा / स्कूल दूर</div>
+              <div class="rbar-track"><div class="rbar-fill r-gray" style="width: 0.9%;"></div></div>
+              <div class="rbar-val">90 • 0.3%</div>
+            </div>
+
+            <!-- Subgroup: Reason Not Known -->
+            <div class="rbar-subgroup-title">कारण पता नहीं चला</div>
+
+            <div class="rbar-row">
+              <div class="rbar-label">कारण स्पष्ट नहीं</div>
+              <div class="rbar-track"><div class="rbar-fill r-light-gray" style="width: 42.4%;"></div></div>
+              <div class="rbar-val">4,383 • 12.2%</div>
+            </div>
+
+            <div class="rbar-row">
+              <div class="rbar-label">पहले से पास / गलत entry</div>
+              <div class="rbar-track"><div class="rbar-fill r-light-gray" style="width: 4.3%;"></div></div>
+              <div class="rbar-val">444 • 1.2%</div>
+            </div>
+
+            <div class="rbar-row">
+              <div class="rbar-label">संपर्क नहीं हो सका</div>
+              <div class="rbar-track"><div class="rbar-fill r-light-gray" style="width: 4.2%;"></div></div>
+              <div class="rbar-val">433 • 1.2%</div>
+            </div>
+          </div>
+
+          <div class="report-other-note">
+            💡 <strong>'Other' वर्गीकरण विश्लेषण:</strong> 'Other' (10,793) में से <strong>1,868</strong> बच्चे रिमार्क्स (Themes) के विश्लेषण से वर्गीकृत हुए, <strong>4,542</strong> बच्चे उसी स्कूल (UDISE) के दर्ज कारणों के आधार पर अनुमानित किए गए, और <strong>4,383</strong> बच्चे अब भी 'कारण स्पष्ट नहीं' समूह में हैं।
+          </div>
+        </div>
+
+        <div class="report-gender-section">
+          <div class="gender-sec-head">लड़के और लड़कियाँ</div>
+          <div class="gender-sec-insight">
+            लड़कों को मज़दूरी / काम के लिए पलायन (19.1%) और लड़कियों को विवाह (11.0%) पढ़ाई से अलग कर रहा है। पलायन के 82% मामले लड़कों के हैं और विवाह के 84% लड़कियों के।
+          </div>
+
+          <table class="gender-summary-table">
+            <thead>
+              <tr>
+                <th>कारण</th>
+                <th>लड़के (21,344)</th>
+                <th>लड़कियाँ (14,531)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>मज़दूरी / काम के लिए पलायन</strong></td>
+                <td>4,074 (19.1%)</td>
+                <td>912 (6.3%)</td>
+              </tr>
+              <tr>
+                <td><strong>विवाह</strong></td>
+                <td>304 (1.4%)</td>
+                <td>1,597 (11.0%)</td>
+              </tr>
+              <tr>
+                <td><strong>घरेलू / पारिवारिक ज़िम्मेदारी</strong></td>
+                <td>2,112 (9.9%)</td>
+                <td>1,733 (11.9%)</td>
+              </tr>
+              <tr>
+                <td><strong>पढ़ाई में रुचि नहीं</strong></td>
+                <td>5,847 (27.4%)</td>
+                <td>4,482 (30.8%)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="report-footer-src">
+          📋 <strong>स्रोत:</strong> Field Data Collection (survey) • कुल बच्चे: 46,428 (Status: Not Studying 37,423) • अद्यतन: 30 अक्टूबर 2026 तक।<br>
+          🔒 <em>नोट: रिपोर्ट में केवल समेकित (Aggregated) सांख्यिकी प्रदर्शित है। आधार, जन्म तिथि, नाम जैसी कोई भी व्यक्तिगत पहचान शामिल नहीं है।</em>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -369,7 +770,7 @@
         renderStatusChart(s);
         renderWillingChart(s);
         renderModeChart(s);
-        renderReasonChart(s);
+        // renderReasonChart(s);
         renderDistrictTable(s);
       } catch (err) {
         document.body.innerHTML = `<div class="empty-note">Could not load live dashboard data: ${err.message}</div>`;
