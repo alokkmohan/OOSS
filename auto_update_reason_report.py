@@ -457,30 +457,36 @@ def update_html(data):
             f.write(html)
         print(f"Updated {ossc_path} successfully!")
 
+def push_to_repo(repo_path, name):
+    print(f"Syncing and pushing {name} ({repo_path})...")
+    try:
+        # First pull any remote changes with rebase
+        subprocess.run(["git", "-C", repo_path, "pull", "--rebase", "origin", "main"], check=False)
+        subprocess.run(["git", "-C", repo_path, "add", "dashboard/index.html"], check=True)
+        res = subprocess.run(["git", "-C", repo_path, "status", "--porcelain"], capture_output=True, text=True)
+        if "dashboard/index.html" in res.stdout:
+            subprocess.run(["git", "-C", repo_path, "commit", "-m", "chore: auto-update reason report from latest survey data"], check=True)
+            # Pull rebase again in case of simultaneous commit
+            subprocess.run(["git", "-C", repo_path, "pull", "--rebase", "origin", "main"], check=False)
+            subprocess.run(["git", "-C", repo_path, "push", "origin", "main"], check=True)
+            print(f"Pushed to {name} successfully!")
+        else:
+            # Check if ahead of remote
+            stat = subprocess.run(["git", "-C", repo_path, "status"], capture_output=True, text=True)
+            if "ahead of" in stat.stdout:
+                subprocess.run(["git", "-C", repo_path, "pull", "--rebase", "origin", "main"], check=False)
+                subprocess.run(["git", "-C", repo_path, "push", "origin", "main"], check=True)
+                print(f"Pushed pending commits to {name} successfully!")
+            else:
+                print(f"No new data changes to commit in {name}.")
+    except Exception as e:
+        print(f"Git push error in {name}:", e)
+
 def push_to_git():
     print("Checking git status...")
-    try:
-        subprocess.run(["git", "-C", "D:\\NIOS", "add", "dashboard/index.html"], check=True)
-        res = subprocess.run(["git", "-C", "D:\\NIOS", "status", "--porcelain"], capture_output=True, text=True)
-        if "dashboard/index.html" in res.stdout:
-            subprocess.run(["git", "-C", "D:\\NIOS", "commit", "-m", "chore: auto-update reason report from latest survey data"], check=True)
-            subprocess.run(["git", "-C", "D:\\NIOS", "push", "origin", "main"], check=True)
-            print("Pushed to D:\\NIOS successfully!")
-        else:
-            print("No new data changes to commit in D:\\NIOS.")
-    except Exception as e:
-        print("Git push error in D:\\NIOS:", e)
-
-    try:
-        if os.path.exists(r"d:\ossc-nios\dashboard\index.html"):
-            subprocess.run(["git", "-C", "d:\\ossc-nios", "add", "dashboard/index.html"], check=True)
-            res = subprocess.run(["git", "-C", "d:\\ossc-nios", "status", "--porcelain"], capture_output=True, text=True)
-            if "dashboard/index.html" in res.stdout:
-                subprocess.run(["git", "-C", "d:\\ossc-nios", "commit", "-m", "chore: auto-update reason report from latest survey data"], check=True)
-                subprocess.run(["git", "-C", "d:\\ossc-nios", "push", "origin", "main"], check=True)
-                print("Pushed to d:\\ossc-nios successfully!")
-    except Exception as e:
-        print("Git push error in d:\\ossc-nios:", e)
+    push_to_repo(r"D:\NIOS", "D:\\NIOS")
+    if os.path.exists(r"d:\ossc-nios\dashboard\index.html"):
+        push_to_repo(r"d:\ossc-nios", "d:\\ossc-nios")
 
 def main():
     df = fetch_data()
