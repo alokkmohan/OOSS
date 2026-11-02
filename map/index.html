@@ -105,9 +105,13 @@ tfoot td{font-weight:700;background:var(--field);position:sticky;bottom:0}
 .note{font-size:.9rem;color:var(--muted);background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:12px 14px}
 .cp{font-size:.82rem;border:1.5px solid var(--teal);background:transparent;color:var(--teal);border-radius:6px;padding:3px 10px}
 .cp.done{background:var(--teal);color:var(--on-teal)}
+.ct-bar select{width:auto;max-width:320px}
+.ct-bar .go{padding:10px 18px}
+td.rm{white-space:normal;min-width:280px}
 /* what each viewer sees: out = login box only; centre = own students; admin = everything */
 body.is-out #tabs, body.is-out #mainView{display:none!important}
 body.is-centre #steps, body.is-centre #codeView, body.is-centre #cwSec, body.is-centre #tab-code, body.is-centre #scope{display:none!important}
+body.is-centre #tab-contact, body.is-centre #contactView{display:none!important}
 body:not(.is-out) #loginView{display:none!important}
 /* home page = login only */
 body.is-out #steps, body.is-out #codeView, body.is-out #meta{display:none!important}
@@ -145,6 +149,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 
   <nav class="tabs" role="tablist" id="tabs">
     <button type="button" role="tab" data-t="survey" aria-selected="true"><b>All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
+    <button type="button" role="tab" id="tab-contact" data-t="contact" aria-selected="false"><b>संपर्क नहीं</b><span>नंबर बंद / गलत · <span id="n-contact">…</span> छात्र</span></button>
     <button type="button" role="tab" id="tab-code" data-t="code" aria-selected="false"><b>Centre Code</b><span>Login ID · NIOS AI Code</span></button>
   </nav>
 
@@ -175,6 +180,18 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
     </div>
     <div class="tbl"><table id="codeTab"></table></div>
     <div class="note">Login ID = centre का UDISE code। AI Code (जहाँ मिल चुका है) स्रोत: NIOS अधिसूचना 20/2026 दिनांक 07 अगस्त 2026, अनुबंध-I। NIOS के साथ हर पत्राचार में AI Code लिखना ज़रूरी है।</div>
+  </section>
+
+  <section class="codes" id="contactView" hidden>
+    <div class="codes-h ct-bar">
+      <select id="ctKind" aria-label="समस्या"></select>
+      <select id="ctDist" aria-label="District"></select>
+      <input type="search" id="ctQ" placeholder="नाम, स्कूल, UDISE, PEN या मोबाइल से खोजें" aria-label="छात्र खोजें">
+      <span class="msg" id="ctN"></span>
+      <button type="button" class="go" id="ctDl" disabled>Excel डाउनलोड करें</button>
+    </div>
+    <div class="tbl"><table id="ctTab"></table></div>
+    <div class="note">Survey के remark में नंबर बंद, गलत नंबर, फ़ोन न उठाने या संपर्क न हो पाने की बात लिखी है — ऐसे सभी बच्चे (हर status के)। यह सूची हर घंटे survey से अपने-आप update होती है (Google Sheet का "Sampark Nahi" tab)।</div>
   </section>
 
   <div class="main" id="mainView">
@@ -213,7 +230,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
 // student rows come back only after login (a centre gets its own, admin gets all).
-const APP_VERSION = '1.6';  // shown in the footer; bump on every release
+const APP_VERSION = '1.7';  // shown in the footer; bump on every release
 const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
 const TAB = {survey:"All Student"};
@@ -222,7 +239,7 @@ const fmt = n => Number(n).toLocaleString("en-IN");
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 let S = null;            // summary: {centres:Map, survey:{udise:[students, male]}}
-let view = "code";       // survey | code (Centre Code tab is admin-only)
+let view = "code";       // survey | contact | code (contact and Centre Code tabs are admin-only)
 let blocksSel = new Set(), centresSel = new Set();
 let session = null;      // {type:"centre"|"admin", u, p, centre?}
 const rowsData = {};     // key -> {headers, rows}
@@ -287,9 +304,11 @@ function refill(){ fillDistricts(); fillBlocks(); fillSchools(); render(); }
 
 function render(){
   hints();
-  $("codeView").hidden = view!=="code"; $("mainView").hidden = view==="code";
+  $("codeView").hidden = view!=="code"; $("contactView").hidden = view!=="contact"; $("mainView").hidden = view!=="survey";
+  $("steps").hidden = view==="contact";
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===view));
   if (view==="code") return renderCodes();
+  if (view==="contact") return renderContact();
   const key=dataKey(), rows=tabCentres().filter(picked).map(c=>{const [n,m]=count(key,c.udise); return {...c,n,m,f:n-m};})
     .sort((a,b)=>(a.district+a.block+a.name).localeCompare(b.district+b.block+b.name));
   const sum=k=>rows.reduce((a,c)=>a+c[k],0), seats=sum("seats");
@@ -338,6 +357,42 @@ function renderCodes(){
     (list.length?list.map(c=>`<tr><td>${esc(c.district)}</td><td>${esc(c.block)}</td><td>${esc(c.name)}</td><td class="code">${esc(c.udise)}</td><td class="ai">${esc(c.ai||"—")}</td><td><button type="button" class="cp" data-code="${esc(c.udise)}">Copy ID</button></td></tr>`).join(""):`<tr><td colspan="6" class="empty">कोई centre नहीं मिला</td></tr>`)+`</tbody>`;
 }
 
+// ---- संपर्क नहीं (admin only): survey remarks saying the phone is off / wrong or no contact ----
+const CONTACT_SHOW = ["समस्या","District Name","Block Name","Last School Name","Student Name","Mobile No","Father Name","Current Status","Remarks"];
+async function loadContact(){
+  if (rowsData.contact) return;
+  const r=await api({udise:"admin",password:session.p,key:"contact"});
+  if (!r.ok) throw new Error(r.error);
+  rowsData.contact={headers:r.headers, rows:r.rows};
+  const tally=name=>{const i=r.headers.indexOf(name), m=new Map(); r.rows.forEach(x=>m.set(x[i],(m.get(x[i])||0)+1)); return m;};
+  const k=tally("समस्या"), d=tally("District Name");
+  $("ctKind").innerHTML=`<option value="">— सभी समस्याएँ (${fmt(r.rows.length)}) —</option>`+[...k].sort((a,b)=>b[1]-a[1]).map(([x,n])=>`<option value="${esc(x)}">${esc(x)} (${fmt(n)})</option>`).join("");
+  $("ctDist").innerHTML=`<option value="">— सभी Districts (${d.size}) —</option>`+[...d.keys()].sort().map(x=>`<option value="${esc(x)}">${esc(x)} (${fmt(d.get(x))})</option>`).join("");
+  $("n-contact").textContent=fmt(r.rows.length);
+}
+function contactRows(){
+  const d=rowsData.contact; if (!d) return null;
+  const h=d.headers, ki=h.indexOf("समस्या"), di=h.indexOf("District Name"), q=$("ctQ").value.trim().toUpperCase();
+  const look=["Student Name","Last School Name","Last UDISE Code","Student PEN","Mobile No","Block Name"].map(x=>h.indexOf(x));
+  return {headers:h, rows:d.rows.filter(r=>(!$("ctKind").value||r[ki]===$("ctKind").value)&&(!$("ctDist").value||r[di]===$("ctDist").value)&&(!q||look.some(i=>String(r[i]).toUpperCase().includes(q))))};
+}
+function renderContact(){
+  const v=contactRows(), t=$("ctTab");
+  if (!v){ t.innerHTML=`<tbody><tr><td class="empty">सूची लोड हो रही है…</td></tr></tbody>`; $("ctN").textContent=""; $("ctDl").disabled=true; return; }
+  const cols=CONTACT_SHOW.map(x=>v.headers.indexOf(x)).filter(i=>i>=0), rm=v.headers.indexOf("Remarks");
+  t.innerHTML=`<thead><tr><th class="n">#</th>${cols.map(i=>`<th>${esc(v.headers[i])}</th>`).join("")}</tr></thead><tbody>`+
+    (v.rows.length?v.rows.map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td${i===rm?' class="rm"':""}>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस चयन में कोई छात्र नहीं है</td></tr>`)+`</tbody>`;
+  $("ctN").className="msg"; $("ctN").textContent=`${fmt(v.rows.length)} छात्र`; $("ctDl").disabled=!v.rows.length;
+}
+function downloadContact(){
+  const v=contactRows(); if (!v||!v.rows.length) return;
+  const rows=v.rows.map((r,i)=>v.headers[0]==="क्र.सं."?[i+1,...r.slice(1)]:r);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sheetOf([v.headers,...rows],0,v.headers.map(h=>h==="Remarks"?50:h==="Last School Name"?36:Math.min(24,Math.max(8,h.length+2)))),"Sampark Nahi");
+  const parts=["Sampark_Nahi"]; if ($("ctDist").value) parts.push($("ctDist").value);
+  XLSX.writeFile(wb,parts.join("_").replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim()+".xlsx");
+}
+
 // ---- login ----
 async function loadAdmin(key){
   if (rowsData[key]) return;
@@ -370,6 +425,7 @@ $("loginView").addEventListener("submit", async e=>{
     if (session.type==="admin"){ $("fDistrict").value=""; blocksSel.clear(); centresSel.clear(); }
     view="survey"; $("lmsg").textContent=""; showSession(); refill();
     if (session.type==="admin" && view!=="code"){ await loadAdmin(dataKey()); render(); }
+    if (session.type==="admin") loadContact().then(()=>{ if (view==="contact") render(); }).catch(()=>{});  // fills the tab count
   }catch(err){
     $("lmsg").className="msg err"; $("lmsg").textContent=err.message&&!/fetch/i.test(err.message)?err.message:"Server से जुड़ नहीं पाए, फिर कोशिश करें।";
     session=null;
@@ -395,7 +451,7 @@ $("logout").addEventListener("click",()=>{
   session=null; for (const k in rowsData) delete rowsData[k];
   try{ sessionStorage.removeItem("niosMap"); }catch(_){}
   $("uid").value=""; $("pwd").value=""; view="code"; $("fDistrict").value=""; blocksSel.clear(); centresSel.clear();
-  $("codeQ").value=""; $("msg").textContent=""; showSession(); refill();
+  $("codeQ").value=""; $("ctQ").value=""; $("n-contact").textContent="…"; $("msg").textContent=""; showSession(); refill();
 });
 
 // ---- download: same three sheets as the Google Sheet (Centre-wise Count, MAP Data, NIOS Format) ----
@@ -452,8 +508,15 @@ $("dlX").addEventListener("click",download);
 $("tabs").addEventListener("click",async e=>{
   const b=e.target.closest("button"); if(!b||b.dataset.t===view) return;
   view=b.dataset.t; refill();
-  if (session&&session.type==="admin"&&view!=="code"){ try{ await loadAdmin(dataKey()); render(); }catch(err){ $("msg").className="msg err"; $("msg").textContent=err.message; } }
+  if (session&&session.type==="admin"&&view!=="code"){
+    try{ await (view==="contact"?loadContact():loadAdmin(dataKey())); render(); }
+    catch(err){ const m=view==="contact"?$("ctN"):$("msg"); m.className="msg err"; m.textContent=err.message; }
+  }
 });
+$("ctKind").addEventListener("change",renderContact);
+$("ctDist").addEventListener("change",renderContact);
+let cq; $("ctQ").addEventListener("input",()=>{clearTimeout(cq); cq=setTimeout(renderContact,200);});
+$("ctDl").addEventListener("click",downloadContact);
 $("fDistrict").addEventListener("change",()=>{blocksSel.clear(); centresSel.clear(); fillBlocks(); fillSchools(); render();});
 $("blocks").addEventListener("change",e=>{ e.target.checked?blocksSel.add(e.target.value):blocksSel.delete(e.target.value); fillSchools(); render(); });
 $("bAll").addEventListener("click",()=>{ $("blocks").querySelectorAll("input").forEach(i=>{i.checked=true; blocksSel.add(i.value);}); fillSchools(); render(); });

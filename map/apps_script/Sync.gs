@@ -18,7 +18,9 @@
  *  - INCREMENTAL: students already in All Student Data keep their centre
  *
  * Tabs kept up to date: All Student Data, NIOS Format All student,
- * Centre-wise Count (+ Excluded Students, Sync Log). Each tab is rewritten
+ * Centre-wise Count, Sampark Nahi (every field row whose remark says the
+ * phone is off / wrong / unanswered or the child could not be contacted;
+ * any status) (+ Excluded Students, Sync Log). Each tab is rewritten
  * only from its first changed row. The accredited-only tabs (MAP Data 213
  * centre, NIOS Format 213 centre) are paused: add 'map213' / 'nios213' to
  * SYNC_TABS to write them again.
@@ -31,7 +33,8 @@ const EXCLUDED_TAB = 'Excluded Students';
 const LOG_TAB = 'Sync Log';
 const TAB_ALL = 'All Student Data', TAB_MAP213 = 'MAP Data 213 centre';
 const TAB_NIOS_ALL = 'NIOS Format All student', TAB_NIOS213 = 'NIOS Format 213 centre', TAB_COUNT = 'Centre-wise Count';
-const SYNC_TABS = ['all', 'niosAll', 'count']; // all centres; 'map213' / 'nios213' paused
+const TAB_CONTACT = 'Sampark Nahi';
+const SYNC_TABS = ['all', 'niosAll', 'count', 'contact']; // all centres; 'map213' / 'nios213' paused
 const MAP_TEXT = ['Student PEN', 'Last UDISE Code', 'Mobile No', 'Academic Year', 'Centre UDISE Code', 'Centre Pin', 'Centre Mobile No.'];
 const NIOS_TEXT = [7, 11, 12, 39, 46, 48]; // mobile, DOB, Aadhaar, pincodes, study centre code
 const CENTRE_COLS = {
@@ -85,6 +88,52 @@ function remarkExclusion_(remark) {
   return '';
 }
 
+// ---- Sampark Nahi: remark says the phone is off / wrong / unanswered, or no contact ----
+const CONTACT_FIELD = ['District Name', 'Block Name', 'Last UDISE Code', 'Last School Name', 'Student PEN', 'Student Name', 'Sex',
+  'Mobile No', 'Father Name', 'Mother Name', 'Last Class', 'Current Status', 'Reason', 'Remarks', 'Collected By', 'Last Updated'];
+const CONTACT_HEAD = ['क्र.सं.', 'समस्या'].concat(CONTACT_FIELD);
+const CONTACT_TEXT = CONTACT_HEAD.map((_, i) => i).slice(1); // everything but the serial number stays text
+const PHONE_ = '(फोन|नंबर|नम्बर|मोबाइल|phone|number|mobile)';
+const NEG_WORD_ = '(नहीं|नही|ना|न)(\\s|$|।|\\||\\.)';
+// checked in this order, first match wins; "contacted, and they said…" never matches
+const CONTACT_RULES = [
+  ['गलत / अमान्य नंबर', new RegExp(PHONE_ + '\\s*(no\\.?\\s*)?(गलत|galat|galt)|नम्बेर\\s*गलत|nambar\\s*galt|wrong\\s*(no|num|mob|mib)|worng\\s*n|rong\\s*no|राँग|रांग|' +
+    'invalid|not\\s*valid|अमान्य|does\\s*not\\s*exist|कही\\s*और\\s*लग|(नम्बर|नंबर).*किसी\\s*और|contact\\s*details.*incorrect|बदल\\s*चुका', 'i')],
+  ['नंबर बंद / इनकमिंग बंद / नहीं लग रहा', new RegExp('switch|swich|स्विच|(फोन|मोबाइल)\\s*बंद|incom|इनकमिंग|out\\s*of\\s*service|not\\s*in\\s*service|' +
+    'आउट\\s*आ?फ\\s*सर्विस|not\\s*working|recharge|not\\s*connected|' + PHONE_ + '\\s*नहीं\\s*लग|phone\\s*nahi\\s*la?g|इस्तेमाल\\s*में\\s*नहीं', 'i')],
+  ['फ़ोन नहीं उठाया / जवाब नहीं', /not\s*pick|call\s*not\s*rec|नहीं\s*उठा|रिसीव\s*नहीं|always\s*busy|हमेशा\s*व्यस्त|कट\s*कर\s*दे|^बात\s*नहीं\s*कर|respon[cs]e\s*nahi/i],
+  ['संपर्क नहीं हो पा रहा', new RegExp('(संपर्क|सम्पर्क)\\s*(में\\s*)?' + NEG_WORD_ + '|(संपर्क|सम्पर्क)\\s*न\\s*होने|न\\s*संपर्क\\s*होने|संपर्क\\s*के\\s*कारण\\s*नाम|' +
+    '(sampark|samark)\\s*(men\\s*)?(nhi|nahi)|unable\\s*to\\s*contact|not\\s*(in\\s*)?contact|no\\s*cont[ae]ct|contact\\s*n(a?i|hi)|not\\s*able\\s*to\\s*connect', 'i')],
+];
+
+function contactKind_(remark) {
+  const t = String(remark || '').split(/\s+/).filter(String).join(' ').normalize('NFC').replace(/\u093c/g, ''); // no nukta: फ़ोन = फोन
+  const hit = t ? CONTACT_RULES.find(([, rx]) => rx.test(t)) : null;
+  return hit ? hit[0] : '';
+}
+
+// one row per PEN (its first matching field row), by district → block → school → problem → name
+function contactRows_(fv, fc) {
+  const seen = new Set(), list = [];
+  for (let r = 1; r < fv.length; r++) {
+    const row = fv[r], kind = contactKind_(row[fc('Remarks')]), pen = String(row[fc('Student PEN')]).trim();
+    if (!kind || (pen && seen.has(pen))) continue;
+    if (pen) seen.add(pen);
+    list.push([kind].concat(CONTACT_FIELD.map(h => h === 'Last UDISE Code' ? padUdise_(row[fc(h)]) : String(row[fc(h)] || '').trim())));
+  }
+  const rank = k => CONTACT_RULES.findIndex(([n]) => n === k);
+  const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+  list.sort((a, b) => cmp(a[1], b[1]) || cmp(a[2], b[2]) || cmp(a[4], b[4]) || rank(a[0]) - rank(b[0]) || cmp(a[6], b[6]));
+  return list.map((r, i) => [i + 1].concat(r));
+}
+
+function contactTab_(ss, n) {
+  const sh = ss.getSheetByName(TAB_CONTACT) || ss.insertSheet(TAB_CONTACT);
+  sh.getRange(1, 1, 1, CONTACT_HEAD.length).setValues([CONTACT_HEAD]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  if (sh.getMaxRows() < n + 1) sh.insertRowsAfter(sh.getMaxRows(), n + 1 - sh.getMaxRows());
+}
+
 // ---- entry points ----
 function setupSync() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'syncFromField')
@@ -95,7 +144,7 @@ function setupSync() {
 
 function syncFromField() { sync_({}); }
 
-/** opts: { dryRun, tabs: ['all','niosAll','count','map213','nios213'] (default SYNC_TABS) } */
+/** opts: { dryRun, tabs: ['all','niosAll','count','contact','map213','nios213'] (default SYNC_TABS) } */
 function sync_(opts) {
   const o = typeof opts === 'object' && opts ? opts : { dryRun: !!opts };
   const lock = LockService.getScriptLock();
@@ -167,6 +216,7 @@ function runSync_(o) {
   const nios = all.map(r => niosRow_(r, hc, niosHead.length, firstRow.get(String(r[hc('Student PEN')])), fc));
   const nios213 = nios.filter((_, i) => isAcc(all[i]));
   const count = centreCount_(centres, all, hc);
+  const contact = want('contact') ? contactRows_(fv, fc) : [];
 
   const basis = {}, removed = {};
   fresh.forEach(st => { basis[st.basis] = (basis[st.basis] || 0) + 1; });
@@ -174,7 +224,7 @@ function runSync_(o) {
   const stats = { ok: true, dryRun: dry, fieldRows: fv.length - 1, validStudents: valid.size,
     allBefore: allT.rows.length, allAfter: all.length, map213After: map213.length, kept: kept.length,
     removed: excluded.length, removedByReason: removed, added: added.length, addedBasis: basis,
-    relabelled: relabelled, writes: {} };
+    relabelled: relabelled, contact: contact.length, writes: {} };
 
   const plan = [
     ['all', TAB_ALL, all, H.length, MAP_TEXT.map(hc)],
@@ -182,16 +232,19 @@ function runSync_(o) {
     ['niosAll', TAB_NIOS_ALL, nios, niosHead.length, NIOS_TEXT],
     ['nios213', TAB_NIOS213, nios213, niosHead.length, NIOS_TEXT],
     ['count', TAB_COUNT, count, 12, [3]],
+    ['contact', TAB_CONTACT, contact, CONTACT_HEAD.length, CONTACT_TEXT],
   ];
+  if (want('contact') && !dry) contactTab_(ss, contact.length);
   plan.forEach(([key, name, rows, width, text]) => {
-    if (!want(key)) return;
-    stats.writes[key] = writeDiff_(ss.getSheetByName(name), rows, width, text, dry);
+    const sh = ss.getSheetByName(name);
+    if (!want(key) || !sh) return;
+    stats.writes[key] = writeDiff_(sh, rows, width, text, dry);
   });
   if (!dry) {
     if (want('all') && excluded.length) appendExcluded_(ss, H, excluded);
     CacheService.getScriptCache().removeAll(['idx:final', 'idx:survey', 'idx:nios:final', 'idx:nios:survey',
       'sum:final', 'sum:survey', 'sum:centres', 'centres', 'ai']);
-    if (excluded.length || added.length || relabelled) log_(ss, stats);
+    if (want('all') && (excluded.length || added.length || relabelled)) log_(ss, stats); // the log describes All Student Data
   }
   stats.seconds = Math.round((Date.now() - t0) / 1000);
   return stats;

@@ -10,6 +10,7 @@
  *   Centre-wise Count           - per-centre counts
  *   All Student Data            - student list ("MAP Data" format)
  *   NIOS Format All student     - the same students in the NIOS admission format
+ *   Sampark Nahi                - admin only: survey remarks saying the phone is off / wrong or no contact
  *
  * Deploy: Deploy → New deployment → Web app, Execute as: Me,
  * Who has access: Anyone. Put the /exec URL in map/index.html (API_URL).
@@ -182,6 +183,7 @@ function admin_(password, key, body) {
   if (key === 'syncdry') return sync_({ dryRun: true });
   if (key === 'syncnow') return sync_({ tabs: body.tabs });
   if (key === 'nios') return niosFor_(SpreadsheetApp.openById(SHEET_ID), body.centres || [], body.tab, true);
+  if (key === 'contact') return contactList_();
   if (!DATA_TABS[key]) return { ok: true, admin: true };
   const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(DATA_TABS[key]);
   const h = headerRow_(sh, UDISE_COL);
@@ -199,6 +201,16 @@ function admin_(password, key, body) {
     return { name: name, dict: dict, idx: idx };
   });
   return { ok: true, admin: true, key: key, students: values.length, cols: cols };
+}
+
+// The Sampark Nahi tab (written by Sync.js) as {headers, rows}; a few hundred rows, so no encoding.
+function contactList_() {
+  const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(TAB_CONTACT);
+  if (!sh || sh.getLastRow() < 1) return { ok: true, key: 'contact', headers: [], rows: [] };
+  const v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues();
+  const headers = v[0].filter(String);
+  return { ok: true, key: 'contact', headers: headers,
+           rows: v.slice(1).filter(r => String(r[0]).trim()).map(r => r.slice(0, headers.length)) };
 }
 
 // Lookups (which rows belong to which centre) are cached for 30 minutes so a
