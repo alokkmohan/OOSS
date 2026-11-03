@@ -10,7 +10,7 @@
  *   Centre-wise Count           - per-centre counts
  *   All Student Data            - student list ("MAP Data" format)
  *   NIOS Format All student     - the same students in the NIOS admission format
- *   Sampark Nahi                - admin only: survey remarks saying the phone is off / wrong or no contact
+ *   Sampark Nahi                - admin only: mobile 9999999999, or a survey remark saying the phone is off / wrong or no contact
  *
  * Deploy: Deploy → New deployment → Web app, Execute as: Me,
  * Who has access: Anyone. Put the /exec URL in map/index.html (API_URL).

@@ -18,9 +18,10 @@
  *  - INCREMENTAL: students already in All Student Data keep their centre
  *
  * Tabs kept up to date: All Student Data, NIOS Format All student,
- * Centre-wise Count, Sampark Nahi (every field row whose remark says the
- * phone is off / wrong / unanswered or the child could not be contacted;
- * any status) (+ Excluded Students, Sync Log). Each tab is rewritten
+ * Centre-wise Count, Sampark Nahi (every field row whose mobile is the
+ * 9999999999 placeholder or whose remark says the phone is off / wrong /
+ * unanswered or the child could not be contacted; any status)
+ * (+ Excluded Students, Sync Log). Each tab is rewritten
  * only from its first changed row. The accredited-only tabs (MAP Data 213
  * centre, NIOS Format 213 centre) are paused: add 'map213' / 'nios213' to
  * SYNC_TABS to write them again.
@@ -88,7 +89,7 @@ function remarkExclusion_(remark) {
   return '';
 }
 
-// ---- Sampark Nahi: remark says the phone is off / wrong / unanswered, or no contact ----
+// ---- Sampark Nahi: mobile is 9999999999, or the remark says the phone is off / wrong / unanswered, or no contact ----
 const CONTACT_FIELD = ['District Name', 'Block Name', 'Last UDISE Code', 'Last School Name', 'Student PEN', 'Student Name', 'Sex',
   'Mobile No', 'Father Name', 'Mother Name', 'Last Class', 'Current Status', 'Reason', 'Remarks', 'Collected By', 'Last Updated'];
 const CONTACT_HEAD = ['क्र.सं.', 'समस्या'].concat(CONTACT_FIELD);
@@ -106,7 +107,10 @@ const CONTACT_RULES = [
     '(sampark|samark)\\s*(men\\s*)?(nhi|nahi)|unable\\s*to\\s*contact|not\\s*(in\\s*)?contact|no\\s*cont[ae]ct|contact\\s*n(a?i|hi)|not\\s*able\\s*to\\s*connect', 'i')],
 ];
 
-function contactKind_(remark) {
+const NO_NUMBER = 'नंबर 9999999999 (असली नंबर नहीं)'; // checked before the remark: the number itself is the problem
+
+function contactKind_(remark, mobile) {
+  if (String(mobile || '').replace(/\D/g, '') === '9999999999') return NO_NUMBER;
   const t = String(remark || '').split(/\s+/).filter(String).join(' ').normalize('NFC').replace(/\u093c/g, ''); // no nukta: फ़ोन = फोन
   const hit = t ? CONTACT_RULES.find(([, rx]) => rx.test(t)) : null;
   return hit ? hit[0] : '';
@@ -116,7 +120,7 @@ function contactKind_(remark) {
 function contactRows_(fv, fc) {
   const seen = new Set(), list = [];
   for (let r = 1; r < fv.length; r++) {
-    const row = fv[r], kind = contactKind_(row[fc('Remarks')]), pen = String(row[fc('Student PEN')]).trim();
+    const row = fv[r], kind = contactKind_(row[fc('Remarks')], row[fc('Mobile No')]), pen = String(row[fc('Student PEN')]).trim();
     if (!kind || (pen && seen.has(pen))) continue;
     if (pen) seen.add(pen);
     list.push([kind].concat(CONTACT_FIELD.map(h => h === 'Last UDISE Code' ? padUdise_(row[fc(h)]) : String(row[fc(h)] || '').trim())));

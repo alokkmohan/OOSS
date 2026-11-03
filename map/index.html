@@ -149,7 +149,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 
   <nav class="tabs" role="tablist" id="tabs">
     <button type="button" role="tab" data-t="survey" aria-selected="true"><b>All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
-    <button type="button" role="tab" id="tab-contact" data-t="contact" aria-selected="false"><b>संपर्क नहीं</b><span>नंबर बंद / गलत · <span id="n-contact">…</span> छात्र</span></button>
+    <button type="button" role="tab" id="tab-contact" data-t="contact" aria-selected="false"><b>संपर्क नहीं</b><span>9999999999 / नंबर बंद / गलत · <span id="n-contact">…</span> छात्र</span></button>
     <button type="button" role="tab" id="tab-code" data-t="code" aria-selected="false"><b>Centre Code</b><span>Login ID · NIOS AI Code</span></button>
   </nav>
 
@@ -186,12 +186,13 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
     <div class="codes-h ct-bar">
       <select id="ctKind" aria-label="समस्या"></select>
       <select id="ctDist" aria-label="District"></select>
+      <select id="ctStat" aria-label="Current Status"></select>
       <input type="search" id="ctQ" placeholder="नाम, स्कूल, UDISE, PEN या मोबाइल से खोजें" aria-label="छात्र खोजें">
       <span class="msg" id="ctN"></span>
       <button type="button" class="go" id="ctDl" disabled>Excel डाउनलोड करें</button>
     </div>
     <div class="tbl"><table id="ctTab"></table></div>
-    <div class="note">Survey के remark में नंबर बंद, गलत नंबर, फ़ोन न उठाने या संपर्क न हो पाने की बात लिखी है — ऐसे सभी बच्चे (हर status के)। यह सूची हर घंटे survey से अपने-आप update होती है (Google Sheet का "Sampark Nahi" tab)।</div>
+    <div class="note">जिनका मोबाइल नंबर 9999999999 दर्ज है, या survey के remark में नंबर बंद, गलत नंबर, फ़ोन न उठाने या संपर्क न हो पाने की बात लिखी है — ऐसे सभी बच्चे (हर status के)। यह सूची हर घंटे survey से अपने-आप update होती है (Google Sheet का "Sampark Nahi" tab)।</div>
   </section>
 
   <div class="main" id="mainView">
@@ -230,7 +231,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
 // student rows come back only after login (a centre gets its own, admin gets all).
-const APP_VERSION = '1.7';  // shown in the footer; bump on every release
+const APP_VERSION = '1.8';  // shown in the footer; bump on every release
 const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
 const TAB = {survey:"All Student"};
@@ -365,24 +366,27 @@ async function loadContact(){
   if (!r.ok) throw new Error(r.error);
   rowsData.contact={headers:r.headers, rows:r.rows};
   const tally=name=>{const i=r.headers.indexOf(name), m=new Map(); r.rows.forEach(x=>m.set(x[i],(m.get(x[i])||0)+1)); return m;};
-  const k=tally("समस्या"), d=tally("District Name");
+  const k=tally("समस्या"), d=tally("District Name"), s=tally("Current Status");
   $("ctKind").innerHTML=`<option value="">— सभी समस्याएँ (${fmt(r.rows.length)}) —</option>`+[...k].sort((a,b)=>b[1]-a[1]).map(([x,n])=>`<option value="${esc(x)}">${esc(x)} (${fmt(n)})</option>`).join("");
   $("ctDist").innerHTML=`<option value="">— सभी Districts (${d.size}) —</option>`+[...d.keys()].sort().map(x=>`<option value="${esc(x)}">${esc(x)} (${fmt(d.get(x))})</option>`).join("");
+  $("ctStat").innerHTML=`<option value="">— हर Status —</option>`+[...s].sort((a,b)=>b[1]-a[1]).map(([x,n])=>`<option value="${esc(x)}">${esc(x||"(खाली)")} (${fmt(n)})</option>`).join("");
   $("n-contact").textContent=fmt(r.rows.length);
 }
 function contactRows(){
   const d=rowsData.contact; if (!d) return null;
-  const h=d.headers, ki=h.indexOf("समस्या"), di=h.indexOf("District Name"), q=$("ctQ").value.trim().toUpperCase();
+  const h=d.headers, ki=h.indexOf("समस्या"), di=h.indexOf("District Name"), si=h.indexOf("Current Status"), q=$("ctQ").value.trim().toUpperCase();
   const look=["Student Name","Last School Name","Last UDISE Code","Student PEN","Mobile No","Block Name"].map(x=>h.indexOf(x));
-  return {headers:h, rows:d.rows.filter(r=>(!$("ctKind").value||r[ki]===$("ctKind").value)&&(!$("ctDist").value||r[di]===$("ctDist").value)&&(!q||look.some(i=>String(r[i]).toUpperCase().includes(q))))};
+  const is=(id,i,r)=>!$(id).value||r[i]===$(id).value;
+  return {headers:h, rows:d.rows.filter(r=>is("ctKind",ki,r)&&is("ctDist",di,r)&&is("ctStat",si,r)&&(!q||look.some(i=>String(r[i]).toUpperCase().includes(q))))};
 }
 function renderContact(){
   const v=contactRows(), t=$("ctTab");
   if (!v){ t.innerHTML=`<tbody><tr><td class="empty">सूची लोड हो रही है…</td></tr></tbody>`; $("ctN").textContent=""; $("ctDl").disabled=true; return; }
-  const cols=CONTACT_SHOW.map(x=>v.headers.indexOf(x)).filter(i=>i>=0), rm=v.headers.indexOf("Remarks");
+  const cols=CONTACT_SHOW.map(x=>v.headers.indexOf(x)).filter(i=>i>=0), rm=v.headers.indexOf("Remarks"), LIMIT=500;
   t.innerHTML=`<thead><tr><th class="n">#</th>${cols.map(i=>`<th>${esc(v.headers[i])}</th>`).join("")}</tr></thead><tbody>`+
-    (v.rows.length?v.rows.map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td${i===rm?' class="rm"':""}>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस चयन में कोई छात्र नहीं है</td></tr>`)+`</tbody>`;
-  $("ctN").className="msg"; $("ctN").textContent=`${fmt(v.rows.length)} छात्र`; $("ctDl").disabled=!v.rows.length;
+    (v.rows.length?v.rows.slice(0,LIMIT).map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td${i===rm?' class="rm"':""}>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस चयन में कोई छात्र नहीं है</td></tr>`)+`</tbody>`;
+  $("ctN").className="msg"; $("ctDl").disabled=!v.rows.length;
+  $("ctN").textContent = v.rows.length>LIMIT ? `${fmt(v.rows.length)} छात्र · पहले ${LIMIT} दिख रहे हैं, पूरी सूची Excel में` : `${fmt(v.rows.length)} छात्र`;
 }
 function downloadContact(){
   const v=contactRows(); if (!v||!v.rows.length) return;
@@ -515,6 +519,7 @@ $("tabs").addEventListener("click",async e=>{
 });
 $("ctKind").addEventListener("change",renderContact);
 $("ctDist").addEventListener("change",renderContact);
+$("ctStat").addEventListener("change",renderContact);
 let cq; $("ctQ").addEventListener("input",()=>{clearTimeout(cq); cq=setTimeout(renderContact,200);});
 $("ctDl").addEventListener("click",downloadContact);
 $("fDistrict").addEventListener("change",()=>{blocksSel.clear(); centresSel.clear(); fillBlocks(); fillSchools(); render();});
