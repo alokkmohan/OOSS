@@ -108,12 +108,12 @@ tfoot td{font-weight:700;background:var(--field);position:sticky;bottom:0}
 .ct-bar select{width:auto;max-width:320px}
 .ct-bar .go{padding:10px 18px}
 td.rm{white-space:normal;min-width:280px}
-/* what each viewer sees: out = login box only; centre = own students; admin = everything */
+/* what each viewer sees: out = login box and list of AI-coded centres; centre = own students; admin = everything */
 body.is-out #tabs, body.is-out #mainView{display:none!important}
 body.is-centre #steps, body.is-centre #codeView, body.is-centre #cwSec, body.is-centre #tab-code, body.is-centre #scope{display:none!important}
 body.is-centre #tab-contact, body.is-centre #contactView{display:none!important}
-body:not(.is-out) #loginView{display:none!important}
-/* home page = login only */
+body:not(.is-out) #loginView, body:not(.is-out) #homeCount{display:none!important}
+/* home page = login, then the list of AI-coded centres */
 body.is-out #steps, body.is-out #codeView, body.is-out #meta{display:none!important}
 body.is-out header{justify-content:center;text-align:center}
 body:not(.is-centre) #centreCard{display:none!important}
@@ -146,6 +146,12 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
     <button type="submit" class="go" id="go">Login</button>
     <div class="msg" id="lmsg" role="status"></div>
   </form>
+
+  <section class="sec" id="homeCount">
+    <div class="sec-h"><h2>NIOS Centre सूची</h2><span class="msg" id="hNote"></span></div>
+    <div class="tbl"><table id="hTab"><tbody><tr><td class="empty">डेटा लोड हो रहा है…</td></tr></tbody></table></div>
+    <div class="note">केवल वे centres जिनका NIOS AI Code जारी हो चुका है।</div>
+  </section>
 
   <nav class="tabs" role="tablist" id="tabs">
     <button type="button" role="tab" data-t="survey" aria-selected="true"><b>All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
@@ -231,7 +237,7 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
 // student rows come back only after login (a centre gets its own, admin gets all).
-const APP_VERSION = '1.8';  // shown in the footer; bump on every release
+const APP_VERSION = '1.9';  // shown in the footer; bump on every release
 const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
 const TAB = {survey:"All Student"};
@@ -302,6 +308,14 @@ function hints(){
   $("cHint").textContent = centresSel.size ? `${centresSel.size} centre चुने गए` : "एक या अधिक — कुछ न चुनें तो सभी centres";
 }
 function refill(){ fillDistricts(); fillBlocks(); fillSchools(); render(); }
+
+// Home page: the centres that have a NIOS AI Code.
+function renderHome(){
+  const rows=tabCentres().filter(c=>c.ai).sort((a,b)=>(a.district+a.block+a.name).localeCompare(b.district+b.block+b.name));
+  $("hTab").innerHTML=`<thead><tr><th class="n">Sr No</th><th>District</th><th>Block</th><th>Centre UDISE</th><th>Centre Name</th><th>Centre Code</th></tr></thead><tbody>`+
+    rows.map((c,i)=>`<tr><td class="n">${i+1}</td><td>${esc(c.district)}</td><td>${esc(c.block)}</td><td class="code">${esc(c.udise)}</td><td>${esc(c.name)}</td><td class="ai">${esc(c.ai)}</td></tr>`).join("")+`</tbody>`;
+  $("hNote").textContent=`${fmt(rows.length)} centres`;
+}
 
 function render(){
   hints();
@@ -538,9 +552,13 @@ $("codeTab").addEventListener("click",e=>{
 
 $("ver").textContent = APP_VERSION;
 (async()=>{
-  try{ await loadSummary(); }catch(e){ $("meta").textContent="डेटा लोड नहीं हुआ — पेज reload करें"; return; }
+  try{ await loadSummary(); }catch(e){
+    $("meta").textContent="डेटा लोड नहीं हुआ — पेज reload करें";
+    $("hTab").innerHTML=`<tbody><tr><td class="empty">डेटा लोड नहीं हुआ — पेज reload करें</td></tr></tbody>`;
+    return;
+  }
   $("meta").innerHTML=`${fmt(S.centres.size)} centres`;
-  refill();
+  refill(); renderHome();
   try{
     const s=JSON.parse(sessionStorage.getItem("niosMap")||"null");
     if (s){ $("uid").value=s.u; $("pwd").value=s.p; $("loginView").requestSubmit(); }
