@@ -3,7 +3,9 @@
  *
  * Reads the "NIOS All Centre Mapping - Out of School Students" Google Sheet.
  * A centre logs in with its UDISE (User ID and Password are both the UDISE)
- * and gets back only its own students. No student data lives in the GitHub repo.
+ * and gets back only its own students. A district logs in with its name
+ * (User ID and Password are both the name) and gets only its own students.
+ * No student data lives in the GitHub repo.
  *
  * Tabs read (kept up to date by Sync.js):
  *   Centre List                 - centre master (every centre can log in)
@@ -23,7 +25,8 @@ const UDISE_COL = 'Centre UDISE Code';
 const CENTRE_LIST_TAB = 'Centre List';
 const NIOS_TABS = { final: 'NIOS Format 213 centre', survey: 'NIOS Format All student' };
 const NIOS_CODE_COL = 'Study Centre Code';
-const CENTRE_SEES_AADHAAR = false; // centre downloads leave the Aadhaar column blank unless this is true
+const CENTRE_SEES_AADHAAR = false; // centre and district downloads leave the Aadhaar column blank unless this is true
+const RAW_TAB = 'Out of School Student Status - Raw data'; // every dropout student; collect sheet, read-only here
 
 // NIOS AI Codes — NIOS notification 20/2026 dated 07-08-2026, Annexure-I (used only until the Centre List tab exists)
 const AI_CODES = {
@@ -155,6 +158,8 @@ function doPost(e) {
     const password = String(body.password || '').trim();
     if (!raw || !password) return json_({ ok: false, error: 'User ID और Password दोनों भरें।' });
     if (raw.toLowerCase() === 'admin') return json_(admin_(password, body.key, body));
+    const district = /[a-z]/i.test(raw) ? districtFor_(raw) : '';
+    if (district) return json_(districtLogin_(district, password, body));
 
     // a UDISE typed without its leading 0 (10 digits) is accepted too, in either field
     const udise = code_(raw.replace(/\s/g, ''));
@@ -171,6 +176,65 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: 'Server error: ' + err.message });
   }
+}
+
+// A district's login names: the full name and each part of "HAPUR (PANCHSHEEL NAGAR)" or
+// "AMETHI - CSM NAGAR". Case, spaces and punctuation don't matter.
+const nameKey_ = s => String(s).toUpperCase().replace(/[^A-Z0-9]/g, '');
+const districtKeys_ = d => [d].concat(String(d).split(/\s+-\s+|[()]/)).map(nameKey_).filter(k => k.length > 2);
+
+function districtFor_(text) {
+  const key = nameKey_(text), map = centreMap_(SpreadsheetApp.openById(SHEET_ID));
+  const names = [...new Set(Object.keys(map).map(u => map[u].District))];
+  return names.find(d => districtKeys_(d).indexOf(key) >= 0) || '';
+}
+
+// A district gets only its own students; the district comes from the login, never from the request.
+function districtLogin_(district, password, body) {
+  if (districtFor_(password) !== district) return { ok: false, error: 'User ID या Password गलत है।' };
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  if (body.action === 'all') return { ok: true, all: districtAll_(ss, district) };
+  if (body.action === 'nios') {
+    const map = centreMap_(ss), asked = new Set((body.centres || []).map(code_));
+    const own = Object.keys(map).filter(u => map[u].District === district && asked.has(u));
+    // no centres must stay no rows: niosFor_ treats an empty list as "every centre"
+    return own.length ? niosFor_(ss, own, 'survey', CENTRE_SEES_AADHAAR) : { ok: true, headers: [], rows: [] };
+  }
+  return { ok: true, district: district, survey: rowsFor_(ss.getSheetByName(DATA_TABS.survey), 'dist', 'District Name', district) };
+}
+
+// Every dropout student of the district from the raw list, with survey status and centre if mapped.
+function districtAll_(ss, district) {
+  const field = SpreadsheetApp.openById(FIELD_SHEET_ID), fsh = field.getSheetByName(FIELD_TAB);
+  const raw = rowsFor_(field.getSheetByName(RAW_TAB), 'raw', 'District Name', district);
+  const rc = n => raw.headers.indexOf(n);
+
+  const fh = fsh.getRange(1, 1, 1, fsh.getLastColumn()).getDisplayValues()[0], n = fsh.getLastRow() - 1;
+  const fcol = name => fsh.getRange(2, fh.indexOf(name) + 1, n, 1).getDisplayValues();
+  const pens = fcol('Student PEN'), status = fcol('Current Status'), survey = new Map();
+  pens.forEach((p, i) => {  // a PEN surveyed twice counts as Not Studying if either row says so
+    const k = String(p[0]).trim(), s = String(status[i][0]).trim();
+    if (s && survey.get(k) !== 'Not Studying') survey.set(k, s);
+  });
+
+  const mapped = rowsFor_(ss.getSheetByName(DATA_TABS.survey), 'dist', 'District Name', district);
+  const mp = mapped.headers.indexOf('Student PEN'), mc = mapped.headers.indexOf('Centre Name');
+  const centre = new Map(mapped.rows.map(r => [String(r[mp]).trim(), r[mc]]));
+
+  const headers = ['Block Name', 'Last School Name', 'Last UDISE Code', 'Student PEN', 'Student Name', 'Sex', 'Mobile No',
+                   'Father Name', 'Mother Name', 'Last Class', 'Survey', 'Map', 'Centre Name'];
+  const rows = raw.rows.map(r => {
+    const pen = String(r[rc('Student PEN')]).trim();
+    return headers.map(h => {
+      if (h === 'Survey') return survey.get(pen) || 'Survey नहीं हुआ';
+      if (h === 'Map') return centre.has(pen) ? 'हाँ' : 'नहीं';
+      if (h === 'Centre Name') return centre.get(pen) || '';
+      return h === 'Last UDISE Code' ? padUdise_(r[rc(h)]) : r[rc(h)];
+    });
+  });
+  const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+  rows.sort((a, b) => cmp(a[0], b[0]) || cmp(a[1], b[1]) || cmp(a[4], b[4]));
+  return { headers: headers, rows: rows };
 }
 
 // Admin sees every student of one data tab. The password lives in Script
@@ -239,8 +303,8 @@ function headerRow_(sh, name) {
 }
 
 // Details of every centre, from the Centre-wise Count tab.
-function findCentre_(ss, udise) {
-  const all = cached_('centres', function () {
+function centreMap_(ss) {
+  return cached_('centres', function () {
     const sh = ss.getSheetByName(CENTRES_TAB);
     const h = headerRow_(sh, 'Centre UDISE');
     if (!h) return {};
@@ -254,12 +318,11 @@ function findCentre_(ss, udise) {
     });
     return out;
   });
-  return all[udise] || null;
 }
 
-// { headerRow, headers, runs: { udise: [[firstRow, count], ...] } } for one data tab.
-function index_(sh, key, force) { return codeIndex_(sh, key, UDISE_COL, force); }
+function findCentre_(ss, udise) { return centreMap_(ss)[udise] || null; }
 
+// { headerRow, headers, runs: { value: [[firstRow, count], ...] } } for one column of a tab.
 function codeIndex_(sh, key, colName, force) {
   return cached_('idx:' + key, function () {
     const h = headerRow_(sh, colName);
@@ -280,19 +343,23 @@ function codeIndex_(sh, key, colName, force) {
   }, force);
 }
 
-function studentsFor_(ss, key, udise, force) {
+function studentsFor_(ss, key, udise) {
   const sh = ss.getSheetByName(DATA_TABS[key]);
-  if (!sh) return { headers: [], rows: [] };
-  const idx = index_(sh, key, force);
-  if (!force && idx.lastRow !== sh.getLastRow()) return studentsFor_(ss, key, udise, true);
-  const col = idx.headers.indexOf(UDISE_COL), rows = [];
+  return sh ? rowsFor_(sh, key, UDISE_COL, udise) : { headers: [], rows: [] };
+}
+
+// The rows of a tab whose colName column equals value, read through the cached index.
+function rowsFor_(sh, key, colName, value, force) {
+  const idx = codeIndex_(sh, key, colName, force);
+  if (!force && idx.lastRow !== sh.getLastRow()) return rowsFor_(sh, key, colName, value, true);
+  const col = idx.headers.indexOf(colName), rows = [];
   let stale = false;
-  (idx.runs[udise] || []).forEach(function (run) {
+  (idx.runs[value] || []).forEach(function (run) {
     sh.getRange(run[0], 1, run[1], idx.headers.length).getDisplayValues().forEach(function (r) {
-      if (code_(r[col]) === udise) rows.push(r); else stale = true;
+      if (code_(r[col]) === value) rows.push(r); else stale = true;
     });
   });
-  if (stale && !force) return studentsFor_(ss, key, udise, true);
+  if (stale && !force) return rowsFor_(sh, key, colName, value, true);
   return { headers: idx.headers, rows: rows };
 }
 

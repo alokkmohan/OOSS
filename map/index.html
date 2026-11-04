@@ -27,7 +27,7 @@ h1{font-family:var(--f-display);font-weight:800;font-size:clamp(1.6rem,4vw,2.2re
 h1 small{display:block;font-family:var(--f-body);font-weight:500;font-size:.95rem;color:var(--muted);margin-top:4px}
 .meta{font-family:var(--f-data);font-size:.78rem;color:var(--muted);text-align:right}
 button{font:inherit;cursor:pointer}
-nav.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;max-width:780px}
+nav.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;max-width:780px;min-width:0}
 nav.tabs button{text-align:left;border:2px solid var(--rule);background:var(--sheet);color:var(--ink);padding:10px 16px;border-radius:10px}
 nav.tabs button b{display:block;font-family:var(--f-display);font-size:1.15rem;font-weight:700}
 nav.tabs button span{font-size:.85rem;color:var(--muted)}
@@ -82,6 +82,7 @@ label.chk .c{font-family:var(--f-data);font-size:.8rem;opacity:.8}
 .dl{font-weight:700;border:0;border-radius:10px;padding:14px 16px;font-size:1.1rem;background:var(--accent);color:var(--accent-ink);width:100%}
 .dl small{display:block;font-weight:500;font-size:.8rem;opacity:.85}
 .dl:disabled{opacity:.45;cursor:not-allowed}
+a.dl{display:block;text-align:center;text-decoration:none}
 .msg{font-size:.9rem;color:var(--muted)} .msg.err{color:var(--warn);font-weight:600} .msg.ok{color:var(--ok)}
 .list{display:grid;gap:22px;min-width:0}
 .sec{display:grid;gap:8px;min-width:0}
@@ -108,10 +109,13 @@ tfoot td{font-weight:700;background:var(--field);position:sticky;bottom:0}
 .ct-bar select{width:auto;max-width:320px}
 .ct-bar .go{padding:10px 18px}
 td.rm{white-space:normal;min-width:280px}
+#dView,#dGrid{min-width:0}
 /* what each viewer sees: out = login box and list of AI-coded centres; centre = own students; admin = everything */
 body.is-out #tabs, body.is-out #mainView{display:none!important}
 body.is-centre #steps, body.is-centre #codeView, body.is-centre #cwSec, body.is-centre #tab-code, body.is-centre #scope{display:none!important}
 body.is-centre #tab-contact, body.is-centre #contactView{display:none!important}
+body.is-district #tab-code, body.is-district #tab-contact, body.is-district #codeView, body.is-district #contactView{display:none!important}
+body:not(.is-district) #tab-dall, body:not(.is-district) #tab-dns, body:not(.is-district) #tab-dsv, body:not(.is-district) #dView{display:none!important}
 body:not(.is-out) #loginView, body:not(.is-out) #homeCount{display:none!important}
 /* home page = login, then the list of AI-coded centres */
 body.is-out #steps, body.is-out #codeView, body.is-out #meta{display:none!important}
@@ -154,7 +158,10 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
   </section>
 
   <nav class="tabs" role="tablist" id="tabs">
-    <button type="button" role="tab" data-t="survey" aria-selected="true"><b>All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
+    <button type="button" role="tab" id="tab-dall" data-t="dall" aria-selected="false"><b>सभी छात्र</b><span>Map हुए या नहीं · <span id="n-dall">…</span> छात्र</span></button>
+    <button type="button" role="tab" id="tab-dns" data-t="dns" aria-selected="false"><b>नहीं पढ़ रहे</b><span>Survey के बाद · <span id="n-dns">…</span> छात्र</span></button>
+    <button type="button" role="tab" data-t="survey" aria-selected="true"><b id="t-survey">All Student</b><span><span id="l-survey">पूरा survey</span> · <span id="n-survey">…</span> छात्र</span></button>
+    <button type="button" role="tab" id="tab-dsv" data-t="dsv" aria-selected="false"><b>Survey बाकी</b><span>Survey नहीं हुआ · <span id="n-dsv">…</span> छात्र</span></button>
     <button type="button" role="tab" id="tab-contact" data-t="contact" aria-selected="false"><b>संपर्क नहीं</b><span>9999999999 / नंबर बंद / गलत · <span id="n-contact">…</span> छात्र</span></button>
     <button type="button" role="tab" id="tab-code" data-t="code" aria-selected="false"><b>Centre Code</b><span>Login ID · NIOS AI Code</span></button>
   </nav>
@@ -201,6 +208,26 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
     <div class="note">जिनका मोबाइल नंबर 9999999999 दर्ज है, या survey के remark में नंबर बंद, गलत नंबर, फ़ोन न उठाने या संपर्क न हो पाने की बात लिखी है — ऐसे सभी बच्चे (हर status के)। यह सूची हर घंटे survey से अपने-आप update होती है (Google Sheet का "Sampark Nahi" tab)।</div>
   </section>
 
+  <section class="codes" id="dView" hidden>
+    <div class="codes-h ct-bar">
+      <select id="dBlock" aria-label="Block"></select>
+      <select id="dMap" aria-label="Map हुए या नहीं"></select>
+      <input type="search" id="dQ" placeholder="नाम, स्कूल, PEN या मोबाइल से खोजें" aria-label="छात्र खोजें">
+      <span class="msg" id="dN"></span>
+      <button type="button" class="go" id="dDl" disabled>Excel डाउनलोड करें</button>
+      <button type="button" class="logoutbtn" id="dLogout">Logout</button>
+    </div>
+    <div id="dGrid">
+      <div class="tbl"><table id="dTab"></table></div>
+      <aside class="rail" id="dMsg" aria-label="Survey सन्देश" hidden>
+        <div><strong>इन छात्रों का survey अभी नहीं हुआ है।</strong><br>कृपया इनका survey नीचे दिए गए link से करें।</div>
+        <a class="dl" href="https://ooss.dataimpact.in/collect/" target="_blank" rel="noopener">Survey करें</a>
+        <div class="msg">ooss.dataimpact.in/collect/</div>
+      </aside>
+    </div>
+    <div class="note" id="dNote"></div>
+  </section>
+
   <div class="main" id="mainView">
     <div class="list">
       <section class="sec" id="cwSec">
@@ -236,8 +263,8 @@ footer b{font-family:var(--f-data);font-weight:500;color:var(--ink)}
 
 <script>
 // Apps Script web app (map/apps_script/Code.gs). Public summary = centre list and counts only;
-// student rows come back only after login (a centre gets its own, admin gets all).
-const APP_VERSION = '1.9';  // shown in the footer; bump on every release
+// student rows come back only after login (a centre or district gets its own, admin gets all).
+const APP_VERSION = '2.0';  // shown in the footer; bump on every release
 const API_URL ='https://script.google.com/macros/s/AKfycbxxOho9vf1BtsKzfV0EtxybtDoOsCK8SMI7k0EgX14ZAas_dKAuRKoL7YjfShu-WN-mAg/exec';
 const PREVIEW = ["Student PEN","Student Name","Sex","Father Name","Mother Name","Mobile No","Eligible Class to Import","Block Name","Last School Name","Centre Name"];
 const TAB = {survey:"All Student"};
@@ -246,9 +273,9 @@ const fmt = n => Number(n).toLocaleString("en-IN");
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 let S = null;            // summary: {centres:Map, survey:{udise:[students, male]}}
-let view = "code";       // survey | contact | code (contact and Centre Code tabs are admin-only)
+let view = "code";       // survey | contact | code (contact and Centre Code tabs are admin-only) | dall | dns | dsv (district login)
 let blocksSel = new Set(), centresSel = new Set();
-let session = null;      // {type:"centre"|"admin", u, p, centre?}
+let session = null;      // {type:"centre"|"district"|"admin", u, p, centre?, district?}
 const rowsData = {};     // key -> {headers, rows}
 
 async function api(body){
@@ -265,15 +292,20 @@ async function loadSummary(){
   tabLabels();
 }
 
-// Tab subtitles: a centre sees its own counts, admin sees the totals.
+// Tab subtitles: a centre or district sees its own counts, admin sees the totals.
 function tabLabels(){
-  const own = session && session.type==="centre";
-  $("l-survey").textContent = own ? "आपके centre के" : "पूरा survey";
-  $("n-survey").textContent = fmt(own ? rowsData.survey.rows.length : S.tot.survey);
+  const own = session && session.type==="centre", dist = session && session.type==="district";
+  $("t-survey").textContent = dist ? "Centre-wise सूची" : "All Student";
+  $("l-survey").textContent = own ? "आपके centre के" : dist ? "Map हुए" : "पूरा survey";
+  $("n-survey").textContent = fmt(own||dist ? rowsData.survey.rows.length : S.tot.survey);
+  if (dist) $("n-dns").textContent = fmt(rowsData.survey.rows.length);
 }
 
-// every centre in the Centre List (all of them can log in)
-function tabCentres(){ return [...S.centres.values()]; }
+// every centre in the Centre List (all of them can log in); a district sees its own
+function tabCentres(){
+  const all=[...S.centres.values()];
+  return session&&session.type==="district" ? all.filter(c=>c.district===session.district) : all;
+}
 const count = (key,u) => S.survey[u] || [0,0];
 const inScope = c => (!$("fDistrict").value || c.district===$("fDistrict").value) && (!blocksSel.size || blocksSel.has(c.block));
 const picked = c => inScope(c) && (!centresSel.size || centresSel.has(c.udise));
@@ -320,10 +352,12 @@ function renderHome(){
 function render(){
   hints();
   $("codeView").hidden = view!=="code"; $("contactView").hidden = view!=="contact"; $("mainView").hidden = view!=="survey";
-  $("steps").hidden = view==="contact";
+  $("dView").hidden = !isDList(); $("steps").hidden = view==="contact"||isDList();
+  $("dGrid").className = view==="dsv" ? "main" : ""; $("dMsg").hidden = view!=="dsv";
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===view));
   if (view==="code") return renderCodes();
   if (view==="contact") return renderContact();
+  if (isDList()) return renderD();
   const key=dataKey(), rows=tabCentres().filter(picked).map(c=>{const [n,m]=count(key,c.udise); return {...c,n,m,f:n-m};})
     .sort((a,b)=>(a.district+a.block+a.name).localeCompare(b.district+b.block+b.name));
   const sum=k=>rows.reduce((a,c)=>a+c[k],0), seats=sum("seats");
@@ -405,10 +439,75 @@ function renderContact(){
 function downloadContact(){
   const v=contactRows(); if (!v||!v.rows.length) return;
   const rows=v.rows.map((r,i)=>v.headers[0]==="क्र.सं."?[i+1,...r.slice(1)]:r);
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,sheetOf([v.headers,...rows],0,v.headers.map(h=>h==="Remarks"?50:h==="Last School Name"?36:Math.min(24,Math.max(8,h.length+2)))),"Sampark Nahi");
   const parts=["Sampark_Nahi"]; if ($("ctDist").value) parts.push($("ctDist").value);
-  XLSX.writeFile(wb,parts.join("_").replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim()+".xlsx");
+  saveRows(v.headers,rows,"Sampark Nahi",parts.join("_"));
+}
+function saveRows(headers,rows,sheet,name){
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sheetOf([headers,...rows],0,headers.map(h=>h==="Remarks"?50:h==="Last School Name"?36:Math.min(24,Math.max(8,h.length+2)))),sheet);
+  XLSX.writeFile(wb,name.replace(/[\\/:*?"<>|.]+/g," ").replace(/\s+/g," ").trim()+".xlsx");
+}
+
+// ---- district login: सभी छात्र (raw list, map हुए या नहीं), नहीं पढ़ रहे (after survey), Survey बाकी ----
+const DLIST = {
+  dall:{cols:["Block Name","Last School Name","Student Name","Sex","Mobile No","Father Name","Last Class","Survey","Map","Centre Name"], sheet:"Sabhi Chhatra",
+        note:"District के सभी dropout छात्र: survey हुआ हो या नहीं, और centre पर map हुए हों या नहीं।"},
+  dns:{cols:["Block Name","Last School Name","Student Name","Sex","Mobile No","Father Name","Eligible Class to Import","Centre Name"], sheet:"Nahi Padh Rahe",
+       note:"Survey के बाद जो छात्र नहीं पढ़ रहे। मृत्यु, कहीं और पढ़ रहे, 12वीं पास और duplicate entry वाले इसमें नहीं हैं।"},
+  dsv:{cols:["Block Name","Last School Name","Student PEN","Student Name","Sex","Mobile No","Father Name","Last Class"], sheet:"Survey Baki",
+       note:"Survey होने के बाद छात्र इस सूची से अपने-आप हट जाएगा।"},
+};
+const NO_SURVEY = "Survey नहीं हुआ";
+const isDList = () => view==="dall"||view==="dns"||view==="dsv";
+function dData(){
+  if (view==="dns") return rowsData.survey;
+  const d=rowsData.dall; if (!d||view==="dall") return d;
+  const si=d.headers.indexOf("Survey");
+  return {headers:d.headers, rows:d.rows.filter(r=>r[si]===NO_SURVEY)};
+}
+function fillD(){
+  const d=dData(), keep=$("dBlock").value, m=new Map();
+  $("dMap").hidden=view!=="dall"; $("dNote").textContent=DLIST[view].note; $("dMap").value="";
+  if (!d) return;
+  const bi=d.headers.indexOf("Block Name"), mi=d.headers.indexOf("Map");
+  d.rows.forEach(r=>m.set(r[bi],(m.get(r[bi])||0)+1));
+  $("dBlock").innerHTML=`<option value="">— सभी Blocks (${m.size}) —</option>`+[...m.keys()].sort().map(b=>`<option value="${esc(b)}">${esc(b)} (${fmt(m.get(b))})</option>`).join("");
+  if (m.has(keep)) $("dBlock").value=keep;
+  if (view==="dall"){
+    const yes=d.rows.filter(r=>r[mi]==="हाँ").length;
+    $("dMap").innerHTML=`<option value="">— Map हुए या नहीं —</option><option value="हाँ">Map हुए (${fmt(yes)})</option><option value="नहीं">Map नहीं हुए (${fmt(d.rows.length-yes)})</option>`;
+  }
+}
+function dRows(){
+  const d=dData(); if (!d) return null;
+  const h=d.headers, bi=h.indexOf("Block Name"), mi=h.indexOf("Map"), q=$("dQ").value.trim().toUpperCase();
+  const look=["Student Name","Last School Name","Student PEN","Mobile No","Father Name"].map(x=>h.indexOf(x));
+  return {headers:h, rows:d.rows.filter(r=>(!$("dBlock").value||r[bi]===$("dBlock").value)&&(view!=="dall"||!$("dMap").value||r[mi]===$("dMap").value)&&(!q||look.some(i=>String(r[i]).toUpperCase().includes(q))))};
+}
+function renderD(){
+  const v=dRows(), t=$("dTab");
+  if (!v){ t.innerHTML=`<tbody><tr><td class="empty">सूची लोड हो रही है… इसमें 20-25 सेकंड लग सकते हैं</td></tr></tbody>`; $("dN").className="msg"; $("dN").textContent=""; $("dDl").disabled=true; return; }
+  const cols=DLIST[view].cols.map(x=>v.headers.indexOf(x)).filter(i=>i>=0), LIMIT=500;
+  t.innerHTML=`<thead><tr><th class="n">#</th>${cols.map(i=>`<th>${esc(v.headers[i])}</th>`).join("")}</tr></thead><tbody>`+
+    (v.rows.length?v.rows.slice(0,LIMIT).map((r,n)=>`<tr><td class="n">${n+1}</td>${cols.map(i=>`<td>${esc(r[i])}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length+1}">इस चयन में कोई छात्र नहीं है</td></tr>`)+`</tbody>`;
+  $("dN").className="msg"; $("dDl").disabled=!v.rows.length;
+  $("dN").textContent = v.rows.length>LIMIT ? `${fmt(v.rows.length)} छात्र · पहले ${LIMIT} दिख रहे हैं, पूरी सूची Excel में` : `${fmt(v.rows.length)} छात्र`;
+}
+async function showD(){
+  fillD(); render();
+  if (view==="dns"||rowsData.dall) return;
+  try{
+    const r=await api({udise:session.u,password:session.p,action:"all"});
+    if (!r.ok) throw new Error(r.error);
+    rowsData.dall=r.all; $("n-dall").textContent=fmt(r.all.rows.length);
+    const si=r.all.headers.indexOf("Survey"); $("n-dsv").textContent=fmt(r.all.rows.filter(x=>x[si]===NO_SURVEY).length);
+    if (view==="dall"||view==="dsv"){ fillD(); render(); }
+  }catch(err){ $("dN").className="msg err"; $("dN").textContent=err.message; }
+}
+function downloadD(){
+  const v=dRows(); if (!v||!v.rows.length) return;
+  const parts=[DLIST[view].sheet.replace(/ /g,"_"),session.district]; if ($("dBlock").value) parts.push($("dBlock").value);
+  saveRows(v.headers,v.rows,DLIST[view].sheet,parts.join("_"));
 }
 
 // ---- login ----
@@ -433,17 +532,23 @@ $("loginView").addEventListener("submit", async e=>{
     } else {
       const r=await api({udise:u,password:p});
       if (!r.ok) throw new Error(r.error);
-      const id=r.centre.UDISE;  // server's 11-digit form, even if typed without the leading 0
-      session={type:"centre",u:id,p,centre:r.centre};
       rowsData.survey=r.survey;
-      const c=S.centres.get(id);
-      if (c){ $("fDistrict").value=c.district; blocksSel=new Set([c.block]); centresSel=new Set([id]); }
+      if (r.district){
+        session={type:"district",u,p,district:r.district};
+        $("fDistrict").value=r.district; blocksSel.clear(); centresSel.clear();
+      } else {
+        const id=r.centre.UDISE;  // server's 11-digit form, even if typed without the leading 0
+        session={type:"centre",u:id,p,centre:r.centre};
+        const c=S.centres.get(id);
+        if (c){ $("fDistrict").value=c.district; blocksSel=new Set([c.block]); centresSel=new Set([id]); }
+      }
     }
     try{ sessionStorage.setItem("niosMap",JSON.stringify({u,p})); }catch(_){}
     if (session.type==="admin"){ $("fDistrict").value=""; blocksSel.clear(); centresSel.clear(); }
-    view="survey"; $("lmsg").textContent=""; showSession(); refill();
+    view=session.type==="district"?"dall":"survey"; $("lmsg").textContent=""; showSession(); refill();
     if (session.type==="admin" && view!=="code"){ await loadAdmin(dataKey()); render(); }
     if (session.type==="admin") loadContact().then(()=>{ if (view==="contact") render(); }).catch(()=>{});  // fills the tab count
+    if (session.type==="district") showD();
   }catch(err){
     $("lmsg").className="msg err"; $("lmsg").textContent=err.message&&!/fetch/i.test(err.message)?err.message:"Server से जुड़ नहीं पाए, फिर कोशिश करें।";
     session=null;
@@ -454,6 +559,7 @@ function showSession(){
   document.body.className = "is-" + (session ? session.type : "out");
   if (S) tabLabels();
   $("who").hidden=!session;
+  $("fDistrict").disabled = !!session && session.type==="district";
   if (!session) return;
   if (session.type==="centre"){
     const c=session.centre;
@@ -462,6 +568,7 @@ function showSession(){
     $("ccAi").textContent=c["AI Code"]||"—";
   }
   $("whoText").innerHTML = session.type==="admin" ? `Login: <b>Admin</b> — सभी centres का डेटा`
+    : session.type==="district" ? `Login: <b>${esc(session.district)}</b><br>District के सभी centres`
     : `Login: <b>${esc(session.u)}</b><br>${esc(session.centre["Centre Name"])} · AI Code <b>${esc(session.centre["AI Code"]||"—")}</b>`;
 }
 
@@ -469,7 +576,8 @@ $("logout").addEventListener("click",()=>{
   session=null; for (const k in rowsData) delete rowsData[k];
   try{ sessionStorage.removeItem("niosMap"); }catch(_){}
   $("uid").value=""; $("pwd").value=""; view="code"; $("fDistrict").value=""; blocksSel.clear(); centresSel.clear();
-  $("codeQ").value=""; $("ctQ").value=""; $("n-contact").textContent="…"; $("msg").textContent=""; showSession(); refill();
+  $("codeQ").value=""; $("ctQ").value=""; $("dQ").value=""; $("dBlock").value="";
+  $("n-contact").textContent=$("n-dall").textContent=$("n-dns").textContent=$("n-dsv").textContent="…"; $("msg").textContent=""; showSession(); refill();
 });
 
 // ---- download: same three sheets as the Google Sheet (Centre-wise Count, MAP Data, NIOS Format) ----
@@ -489,7 +597,7 @@ async function download(){
     const whole = session.type==="admin" && !$("fDistrict").value && !centresSel.size;
     const r = session.type==="admin"
       ? await api({udise:"admin", password:session.p, key:"nios", tab:"survey", centres: whole ? [] : [...new Set(v.rows.map(x=>x[ui]))]})
-      : await api({udise:session.u, password:session.p, action:"nios"});
+      : await api({udise:session.u, password:session.p, action:"nios", centres:[...new Set(v.rows.map(x=>x[ui]))]});
     if (!r.ok) throw new Error(r.error || "NIOS Format नहीं मिला");
     const nios = r.cols ? Array.from({length:r.n}, (_,i)=>r.cols.map(c=>c.dict[c.idx[i]])) : r.rows;
 
@@ -526,6 +634,7 @@ $("dlX").addEventListener("click",download);
 $("tabs").addEventListener("click",async e=>{
   const b=e.target.closest("button"); if(!b||b.dataset.t===view) return;
   view=b.dataset.t; refill();
+  if (isDList()) return showD();
   if (session&&session.type==="admin"&&view!=="code"){
     try{ await (view==="contact"?loadContact():loadAdmin(dataKey())); render(); }
     catch(err){ const m=view==="contact"?$("ctN"):$("msg"); m.className="msg err"; m.textContent=err.message; }
@@ -536,6 +645,11 @@ $("ctDist").addEventListener("change",renderContact);
 $("ctStat").addEventListener("change",renderContact);
 let cq; $("ctQ").addEventListener("input",()=>{clearTimeout(cq); cq=setTimeout(renderContact,200);});
 $("ctDl").addEventListener("click",downloadContact);
+$("dBlock").addEventListener("change",renderD);
+$("dMap").addEventListener("change",renderD);
+let dq; $("dQ").addEventListener("input",()=>{clearTimeout(dq); dq=setTimeout(renderD,200);});
+$("dDl").addEventListener("click",downloadD);
+$("dLogout").addEventListener("click",()=>$("logout").click());
 $("fDistrict").addEventListener("change",()=>{blocksSel.clear(); centresSel.clear(); fillBlocks(); fillSchools(); render();});
 $("blocks").addEventListener("change",e=>{ e.target.checked?blocksSel.add(e.target.value):blocksSel.delete(e.target.value); fillSchools(); render(); });
 $("bAll").addEventListener("click",()=>{ $("blocks").querySelectorAll("input").forEach(i=>{i.checked=true; blocksSel.add(i.value);}); fillSchools(); render(); });

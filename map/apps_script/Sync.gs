@@ -246,7 +246,7 @@ function runSync_(o) {
   });
   if (!dry) {
     if (want('all') && excluded.length) appendExcluded_(ss, H, excluded);
-    CacheService.getScriptCache().removeAll(['idx:final', 'idx:survey', 'idx:nios:final', 'idx:nios:survey',
+    CacheService.getScriptCache().removeAll(['idx:final', 'idx:survey', 'idx:dist', 'idx:nios:final', 'idx:nios:survey',
       'sum:final', 'sum:survey', 'sum:centres', 'centres', 'ai']);
     if (want('all') && (excluded.length || added.length || relabelled)) log_(ss, stats); // the log describes All Student Data
   }
